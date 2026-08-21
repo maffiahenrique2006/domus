@@ -1,60 +1,99 @@
 # Domus System
 
-Plataforma de gestão operacional para escritórios de arquitetura e design de interiores.
+> Plataforma de gestão operacional para escritórios de arquitetura: acompanhe demandas, projetos, financeiro e IA em um único lugar.
 
-Demo configurado para **Vértice Espaços** — escritório fictício de arquitetura comercial.
+---
 
-## Módulos
+## O que é
 
-| Módulo | Descrição |
-|--------|-----------|
-| **Visão Geral** | Dashboard com KPIs, alertas de atenção, projetos ativos e próximos marcos |
-| **Demandas** | Gestão de leads e solicitações em visualização lista ou kanban |
-| **Projetos** | Acompanhamento de projetos com fases, tarefas, financeiro e histórico |
-| **Financeiro** | Contas a receber/pagar, gráficos de custo e margem por projeto |
-| **Domus AI** | Interface ilustrativa do assistente inteligente integrado ao sistema |
+Domus é um sistema interno para escritórios de arquitetura gerenciarem o ciclo completo de um projeto — desde a captação de demandas até o fechamento financeiro — com um assistente de IA integrado para alertas e resumos automáticos.
 
-## Stack
+Este repositório contém o **demo V1** configurado para a *Vértice Espaços* (escritório fictício), com dados locais/mockados e sem dependência de banco de dados externo.
 
-- **Frontend:** React 19 + Vite + Tailwind CSS v4 + Wouter + Framer Motion + Recharts
-- **Design System:** `@workspace/domus-ds` — tokens, componentes e tema compartilhado
-- **API Server:** Node.js + Express (Hono) + TypeScript
-- **Monorepo:** pnpm workspaces
+---
 
-## Estrutura
+## Para quem
+
+Escritórios de arquitetura e design de interiores de pequeno e médio porte que hoje gerenciam projetos em planilhas ou ferramentas genéricas (Notion, Trello) e precisam de uma visão integrada de demandas, cronograma e fluxo de caixa.
+
+**Módulos disponíveis:**
+
+| Módulo | O que faz |
+|---|---|
+| Visão Geral | Dashboard com KPIs, alertas e próximos marcos |
+| Demandas | Gestão de leads e solicitações (lista ou kanban) |
+| Projetos | Fases, tarefas, orçamento e histórico de cada projeto |
+| Financeiro | Contas a receber/pagar e análise de margem por projeto |
+| Domus AI | Interface do assistente inteligente (demo ilustrativo) |
+
+---
+
+## Como rodar
+
+**Pré-requisitos:** Node.js ≥ 20, pnpm ≥ 9.
+
+```bash
+# 1. Clone o repositório
+git clone https://github.com/maffiahenrique2006/domus.git
+cd domus
+
+# 2. Instale as dependências (monorepo pnpm)
+pnpm install
+
+# 3. Copie e preencha as variáveis de ambiente
+cp .env.example .env
+# edite .env com seus valores (veja "O que precisa" abaixo)
+
+# 4. Inicie os serviços em terminais separados
+pnpm --filter @workspace/domus-ds run dev   # Design system  → :PORT/domus-ds
+pnpm --filter @workspace/domus run dev      # App principal  → :PORT
+pnpm --filter @workspace/api-server run dev # API            → :PORT/api
+```
+
+> No Replit, os workflows já estão configurados — basta clicar em **Run**.
+
+**Estrutura do monorepo:**
 
 ```
 artifacts/
-  domus/          # App web principal
-  domus-ds/       # Design system (tokens + componentes)
-  api-server/     # Servidor de API
-lib/              # Bibliotecas compartilhadas
+  domus/        → app React principal (Vite + Tailwind + Wouter)
+  domus-ds/     → design system compartilhado (tokens, componentes)
+  api-server/   → servidor Express/Hono (TypeScript)
+lib/            → bibliotecas internas compartilhadas
+scripts/        → utilitários de build e pós-merge
 ```
 
-## Rodando localmente
+---
 
-```bash
-# Instalar dependências
-pnpm install
+## O que precisa
 
-# Iniciar todos os serviços
-pnpm --filter @workspace/domus run dev        # App: http://localhost:PORT
-pnpm --filter @workspace/domus-ds run dev     # DS: http://localhost:PORT/domus-ds
-pnpm --filter @workspace/api-server run dev   # API: http://localhost:PORT
-```
+Todas as variáveis ficam em `.env` na raiz. **Nunca commite valores reais.**
 
-> As portas são configuradas automaticamente pela variável de ambiente `PORT`.
+| Variável | Obrigatória | Para quê |
+|---|---|---|
+| `SESSION_SECRET` | Sim | Assina e valida sessões do servidor |
+| `PORT` | Não | Porta de cada serviço (padrão: atribuída automaticamente) |
+| `NODE_ENV` | Não | `development` ou `production` |
+| `LOG_LEVEL` | Não | Verbosidade dos logs do servidor (`info`, `debug`, `error`) |
 
-## Dados de demonstração
+Crie um `.env.example` com as chaves (sem valores) e commite junto ao código para que qualquer pessoa que clonar saiba o que preencher.
 
-Todo o conteúdo exibido é fictício e gerado localmente (sem banco de dados). Os dados ficam em `artifacts/domus/src/data/seed.ts` com datas relativas ao dia atual para manter o demo sempre atualizado.
+**Contas / serviços externos:**
 
-**Clientes e projetos no demo:**
-- Loja Horizonte (Horizonte) — P-238
-- Café Nômade Vila Madalena (Café Nômade) — P-239
-- Escritório Alba Expansão (Alba Tecnologia) — P-235
-- Pop-up Marea Verão (Grupo Marea) — P-241
+- Nenhuma dependência externa no demo V1 — tudo roda localmente.
+- Para produção: adicionar banco de dados (PostgreSQL via Neon ou Replit DB) e autenticação (Clerk ou Replit Auth).
 
-## Licença
+---
 
-MIT
+## Quem mantém
+
+| Papel | Nome | Contato |
+|---|---|---|
+| Criador / mantenedor principal | Henrique Wrobel | [@maffiahenrique2006](https://github.com/maffiahenrique2006) |
+| Colaborador | *(adicione seu nome aqui)* | *(GitHub ou e-mail)* |
+
+Abra uma **Issue** no GitHub para bugs ou sugestões. PRs são bem-vindos — descreva o problema que resolve antes de implementar.
+
+---
+
+*Domus System · Demo V1 · Vértice Espaços · MIT License*
