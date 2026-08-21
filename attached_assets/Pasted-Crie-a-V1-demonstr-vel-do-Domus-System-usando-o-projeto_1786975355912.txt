@@ -1,0 +1,412 @@
+Crie a V1 demonstrável do Domus System usando o projeto atual.
+
+Antes de implementar:
+
+1. Leia integralmente o DESIGN.md e os arquivos do design system que já existem no projeto.
+2. Use esses documentos como fonte de verdade para cores, tipografia, espaçamento, componentes, ícones, estados e comportamento visual.
+3. Preserve a identidade visual da Domus. Não crie um segundo design system.
+4. Inspecione a estrutura e as dependências existentes antes de adicionar bibliotecas ou criar componentes novos.
+5. Implemente a aplicação diretamente, sem parar apenas em um plano.
+
+CONTEXTO DO PRODUTO
+
+O Domus System é um sistema que cria sistemas de gestão personalizados para cada empresa.
+
+Esta aplicação deve demonstrar como o Domus foi configurado para uma empresa fictícia específica. Não estamos construindo agora o construtor interno da Domus nem uma inteligência artificial funcional.
+
+A interface deve parecer um sistema real, coerente e utilizável, mas todos os dados serão fictícios e locais. Não haverá banco de dados real, autenticação real, integrações externas, pagamentos ou automações reais nesta versão.
+
+EMPRESA FICTÍCIA
+
+Nome: Vértice Espaços
+
+Descrição:
+A Vértice Espaços é uma empresa fictícia de arquitetura comercial que projeta e executa lojas, escritórios, restaurantes e espaços temporários para marcas.
+
+Modelo de operação:
+
+- Recebe pedidos de clientes e solicitações internas.
+- Analisa e transforma demandas aprovadas em projetos.
+- Organiza cada projeto por fases, responsáveis, prazos e orçamento.
+- Controla receitas, despesas, pagamentos e margem por projeto.
+- A direção precisa enxergar rapidamente o que exige atenção.
+
+Equipe:
+
+- Marina Costa — Diretora-geral
+- Rafael Nunes — Diretor de projetos
+- Helena Prado — Arquiteta sênior
+- Caio Martins — Arquiteto
+- Bruna Lopes — Coordenadora financeira
+- Lucas Freire — Coordenador de obras
+- Nina Alves — Atendimento
+
+Usuário da demonstração:
+Marina Costa, diretora-geral.
+
+OBJETIVO DA V1
+
+Criar uma aplicação web responsiva, navegável e visualmente refinada que permita demonstrar:
+
+- a visão geral da empresa;
+- o recebimento e acompanhamento de demandas;
+- a gestão dos projetos;
+- o controle financeiro;
+- a conexão entre demanda, projeto e resultado financeiro;
+- a capacidade da Domus de adaptar o sistema à operação de uma empresa.
+
+ESTRUTURA PRINCIPAL
+
+Crie uma navegação principal com:
+
+1. Visão geral
+2. Demandas
+3. Projetos
+4. Financeiro
+
+Inclua também:
+
+- identificação da Vértice Espaços no contexto da aplicação;
+- perfil da usuária Marina Costa;
+- busca ou comando rápido, se isso estiver previsto no design existente;
+- versão responsiva para desktop e celular;
+- estados de hover, foco, seleção e carregamento coerentes com o design system.
+
+Não crie módulos sem função apenas para preencher a navegação.
+
+1. VISÃO GERAL
+
+A tela inicial deve responder: “O que precisa da atenção da direção hoje?”
+
+Mostrar:
+
+- 7 demandas abertas;
+- 4 projetos ativos;
+- R$ 248.000 em receita prevista no mês;
+- R$ 176.400 em despesas previstas;
+- margem prevista de 28,9%;
+- 3 pagamentos próximos do vencimento;
+- 2 pontos que exigem atenção.
+
+Criar uma área “Precisa de atenção” com itens acionáveis:
+
+- Projeto Loja Horizonte com orçamento 8% acima do previsto;
+- aprovação do layout final do Café Nômade vence hoje;
+- pagamento de R$ 18.500 do cliente Alba está atrasado;
+- demanda do cliente Lumina está sem responsável.
+
+Mostrar também:
+
+- andamento resumido dos projetos ativos;
+- demandas recentes;
+- visão financeira do mês;
+- próximos marcos ou entregas;
+- acesso rápido para registrar demanda e lançamento financeiro.
+
+Os elementos devem levar às respectivas telas ou detalhes.
+
+2. DEMANDAS
+
+Demandas são pedidos ainda não transformados necessariamente em projetos.
+
+Permitir:
+
+- visualizar demandas em lista ou quadro por status;
+- filtrar por status, prioridade, responsável, cliente e prazo;
+- buscar por título;
+- abrir uma demanda;
+- criar e editar uma demanda localmente;
+- alterar o status;
+- converter uma demanda aprovada em projeto por meio de um fluxo demonstrativo.
+
+Status:
+
+- Nova
+- Em análise
+- Aguardando cliente
+- Aprovada
+- Convertida em projeto
+- Cancelada
+
+Dados de exemplo:
+
+D-1042 — Nova unidade da Loja Horizonte
+Cliente: Horizonte
+Prioridade: Alta
+Responsável: Rafael Nunes
+Status: Convertida em projeto
+Prazo: 30/09/2026
+Valor estimado: R$ 180.000
+
+D-1043 — Reforma do Café Nômade
+Cliente: Café Nômade
+Prioridade: Alta
+Responsável: Helena Prado
+Status: Aprovada
+Prazo: 25/08/2026
+Valor estimado: R$ 95.000
+
+D-1044 — Estande para Feira Lumina
+Cliente: Lumina Cosméticos
+Prioridade: Urgente
+Responsável: Não definido
+Status: Nova
+Prazo: 04/09/2026
+Valor estimado: R$ 72.000
+
+D-1045 — Ajustes acústicos no escritório Alba
+Cliente: Alba Tecnologia
+Prioridade: Média
+Responsável: Caio Martins
+Status: Em análise
+Prazo: 12/09/2026
+Valor estimado: R$ 38.000
+
+D-1046 — Atualização de sinalização interna
+Cliente: Grupo Marea
+Prioridade: Baixa
+Responsável: Nina Alves
+Status: Aguardando cliente
+Prazo: 18/09/2026
+Valor estimado: R$ 16.000
+
+Ao abrir uma demanda, mostrar:
+
+- descrição;
+- cliente;
+- origem;
+- prioridade;
+- prazo;
+- responsável;
+- valor estimado;
+- histórico;
+- comentários fictícios;
+- arquivos representados visualmente, sem upload real;
+- relação com projeto, quando existir.
+
+3. PROJETOS
+
+Permitir visualizar os projetos em cards e em lista.
+
+Cada projeto deve mostrar:
+
+- nome;
+- cliente;
+- fase atual;
+- progresso;
+- responsável;
+- prazo;
+- orçamento previsto;
+- custo realizado;
+- margem;
+- indicador de saúde.
+
+Projetos fictícios:
+
+P-238 — Loja Horizonte — Unidade Jardins
+Cliente: Horizonte
+Responsável: Rafael Nunes
+Fase: Obra
+Progresso: 68%
+Prazo: 30/09/2026
+Orçamento: R$ 180.000
+Custo previsto: R$ 126.000
+Custo realizado: R$ 112.400
+Saúde: Atenção
+Motivo: projeção 8% acima do orçamento de custos
+
+P-239 — Café Nômade — Vila Madalena
+Cliente: Café Nômade
+Responsável: Helena Prado
+Fase: Aprovação
+Progresso: 35%
+Prazo: 18/10/2026
+Orçamento: R$ 95.000
+Custo previsto: R$ 61.000
+Custo realizado: R$ 14.800
+Saúde: Atenção
+Motivo: aprovação do layout vence hoje
+
+P-235 — Escritório Alba — Expansão
+Cliente: Alba Tecnologia
+Responsável: Caio Martins
+Fase: Entrega
+Progresso: 92%
+Prazo: 28/08/2026
+Orçamento: R$ 145.000
+Custo previsto: R$ 96.000
+Custo realizado: R$ 91.200
+Saúde: Saudável
+
+P-241 — Pop-up Marea Verão
+Cliente: Grupo Marea
+Responsável: Lucas Freire
+Fase: Planejamento
+Progresso: 18%
+Prazo: 15/11/2026
+Orçamento: R$ 88.000
+Custo previsto: R$ 54.000
+Custo realizado: R$ 6.500
+Saúde: Saudável
+
+Fases dos projetos:
+
+- Planejamento
+- Conceito
+- Projeto executivo
+- Aprovação
+- Compras
+- Obra
+- Entrega
+
+Na página de detalhes do projeto, criar abas ou seções para:
+
+- Visão geral
+- Etapas
+- Tarefas
+- Financeiro
+- Histórico
+
+Mostrar uma linha do tempo das fases, próximos marcos, tarefas, responsáveis, riscos e resumo financeiro. Deixar evidente qual demanda originou o projeto.
+
+4. FINANCEIRO
+
+Criar uma visão financeira gerencial, e não um sistema contábil completo.
+
+Mostrar:
+
+- receitas previstas;
+- receitas recebidas;
+- despesas previstas;
+- despesas pagas;
+- contas a receber;
+- contas a pagar;
+- resultado e margem do mês;
+- comparação entre previsto e realizado;
+- distribuição financeira por projeto.
+
+Permitir:
+
+- alternar entre visão geral, contas a receber e contas a pagar;
+- filtrar por período, projeto, cliente, categoria e situação;
+- abrir detalhes de um lançamento;
+- registrar um lançamento fictício localmente;
+- marcar um lançamento como pago ou recebido apenas no estado local da demonstração.
+
+Lançamentos de exemplo:
+
+- R$ 42.000 a receber — Horizonte — 2ª parcela — vence em 25/08/2026
+- R$ 18.500 a receber — Alba Tecnologia — atrasado desde 12/08/2026
+- R$ 28.500 a receber — Café Nômade — vence em 30/08/2026
+- R$ 21.600 a pagar — fornecedor Madeira Viva — vence em 22/08/2026
+- R$ 14.800 a pagar — Oficina Metal — vence em 27/08/2026
+- R$ 9.400 pago — iluminação da Loja Horizonte
+- R$ 6.500 pago — sinal da produção do Pop-up Marea
+
+Use cores e indicadores com cuidado. Não dependa apenas de cor para comunicar atraso, risco, sucesso ou situação financeira.
+
+RELAÇÃO ENTRE OS MÓDULOS
+
+A aplicação não deve parecer quatro páginas isoladas.
+
+Implemente conexões navegáveis:
+
+- uma demanda aprovada pode originar um projeto;
+- o projeto mantém referência à demanda de origem;
+- lançamentos financeiros podem estar ligados a um projeto e cliente;
+- alertas da visão geral levam ao registro correspondente;
+- alterações locais devem atualizar os indicadores relacionados quando for viável.
+
+COMPORTAMENTOS DA DEMONSTRAÇÃO
+
+As interações precisam funcionar no navegador:
+
+- navegação entre páginas;
+- filtros;
+- busca;
+- abertura e fechamento de detalhes;
+- criação e edição por formulários;
+- alteração de status;
+- conversão demonstrativa de demanda em projeto;
+- atualização local de indicadores;
+- feedback de sucesso;
+- estados vazios;
+- validação básica dos formulários;
+- persistência com localStorage, se for adequada à arquitetura atual.
+
+Não criar botões sem ação. Quando uma funcionalidade real estiver fora do escopo, não exibir um botão que simule uma promessa inexistente.
+
+DADOS E TECNOLOGIA
+
+- Todos os nomes, empresas, projetos e valores são fictícios.
+- Use dados mockados centralizados e bem estruturados.
+- Não use serviços externos.
+- Não solicite chaves de API.
+- Não implemente autenticação real.
+- Não implemente IA ou chatbot funcional.
+- Não conecte banco de dados nesta versão.
+- Mantenha a estrutura preparada para uma futura troca dos dados locais por uma API.
+- Use a stack e os padrões já presentes no projeto.
+- Não substitua dependências existentes sem necessidade.
+- Use ícones da biblioteca já instalada; não use emojis como ícones da interface.
+
+DIREÇÃO DE EXPERIÊNCIA
+
+A sensação deve ser de uma central de gestão personalizada, clara e confiável.
+
+Prioridades:
+
+- visão antes do detalhe;
+- informação importante fácil de encontrar;
+- hierarquia visual forte;
+- textos em português;
+- valores em reais;
+- datas no padrão brasileiro;
+- interface profissional e sóbria;
+- boa legibilidade;
+- acessibilidade;
+- responsividade;
+- densidade equilibrada;
+- acabamento visual de produto real.
+
+Evite:
+
+- aparência de template genérico de dashboard;
+- excesso de gráficos decorativos;
+- grandes blocos de cor sem função;
+- textos vagos;
+- lorem ipsum;
+- dados desconectados;
+- componentes que não seguem o DESIGN.md;
+- modificar o design system para acomodar decisões improvisadas.
+
+APRESENTAÇÃO DA PERSONALIZAÇÃO
+
+Em um ponto discreto da experiência, mostre a mensagem:
+
+“Domus System configurado para a operação da Vértice Espaços.”
+
+Essa mensagem deve ajudar a explicar que o produto foi personalizado para a empresa, sem transformar a aplicação em uma propaganda da Domus.
+
+CRITÉRIOS DE CONCLUSÃO
+
+Considere a V1 pronta somente quando:
+
+- as quatro áreas principais estiverem implementadas e navegáveis;
+- os dados fictícios estiverem coerentes entre as telas;
+- os principais botões e filtros funcionarem;
+- demanda, projeto e financeiro estiverem conectados;
+- a aplicação estiver responsiva;
+- não houver erros no console;
+- o projeto iniciar normalmente;
+- o build passar;
+- a interface seguir o DESIGN.md e o design system existentes;
+- os estados de erro, vazio e carregamento estiverem tratados;
+- a demonstração contar uma história clara para alguém que nunca viu o Domus.
+
+Ao terminar:
+
+1. Execute os testes, lint e build disponíveis no projeto.
+2. Corrija os erros encontrados.
+3. Faça uma revisão visual das telas principais em desktop e celular.
+4. Entregue um resumo curto do que foi implementado, quais interações funcionam e como iniciar a demonstração.

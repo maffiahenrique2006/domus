@@ -1,0 +1,577 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Domus System API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: chat
+    description: AI chat with Domus
+  - name: demands
+    description: Demand / task management
+  - name: financial
+    description: Financial management
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # ── CHAT ──────────────────────────────────────────────────────────────
+  /chat/messages:
+    get:
+      operationId: getChatMessages
+      tags: [chat]
+      summary: Get all chat messages
+      responses:
+        "200":
+          description: List of chat messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatMessage"
+
+    post:
+      operationId: sendChatMessage
+      tags: [chat]
+      summary: Send a message and get AI response
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatMessageInput"
+      responses:
+        "200":
+          description: AI response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessage"
+
+  /chat/messages/{id}:
+    delete:
+      operationId: deleteChatMessage
+      tags: [chat]
+      summary: Delete a chat message
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  /chat/clear:
+    post:
+      operationId: clearChat
+      tags: [chat]
+      summary: Clear all chat messages
+      responses:
+        "200":
+          description: Cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  # ── DEMANDS ───────────────────────────────────────────────────────────
+  /demands:
+    get:
+      operationId: getDemands
+      tags: [demands]
+      summary: List all demands
+      responses:
+        "200":
+          description: List of demands
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Demand"
+
+    post:
+      operationId: createDemand
+      tags: [demands]
+      summary: Create a demand
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DemandInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Demand"
+
+  /demands/summary:
+    get:
+      operationId: getDemandsSummary
+      tags: [demands]
+      summary: Get demand counts by status
+      responses:
+        "200":
+          description: Summary by status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DemandsSummary"
+
+  /demands/{id}:
+    get:
+      operationId: getDemand
+      tags: [demands]
+      summary: Get demand by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Demand
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Demand"
+
+    patch:
+      operationId: updateDemand
+      tags: [demands]
+      summary: Update a demand
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DemandUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Demand"
+
+    delete:
+      operationId: deleteDemand
+      tags: [demands]
+      summary: Delete a demand
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  # ── FINANCIAL ─────────────────────────────────────────────────────────
+  /financial/transactions:
+    get:
+      operationId: getTransactions
+      tags: [financial]
+      summary: List all transactions
+      responses:
+        "200":
+          description: List of transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Transaction"
+
+    post:
+      operationId: createTransaction
+      tags: [financial]
+      summary: Create a transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+
+  /financial/transactions/{id}:
+    patch:
+      operationId: updateTransaction
+      tags: [financial]
+      summary: Update a transaction
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+
+    delete:
+      operationId: deleteTransaction
+      tags: [financial]
+      summary: Delete a transaction
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  /financial/summary:
+    get:
+      operationId: getFinancialSummary
+      tags: [financial]
+      summary: Get financial summary (totals, by category, monthly trend)
+      responses:
+        "200":
+          description: Financial summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancialSummary"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    DeleteResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+
+    # ── CHAT ──────────────────────────────────────────────────────────
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: number
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - role
+        - content
+        - createdAt
+
+    ChatMessageInput:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+      required:
+        - content
+
+    # ── DEMANDS ───────────────────────────────────────────────────────
+    Demand:
+      type: object
+      properties:
+        id:
+          type: number
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, in_progress, review, done]
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+        area:
+          type: string
+          enum: [comercial, financeiro, operacoes, marketing, juridico, estrutura, sistema, empresa]
+        dueDate:
+          type: ["string", "null"]
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - status
+        - priority
+        - area
+        - createdAt
+        - updatedAt
+
+    DemandInput:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        status:
+          type: string
+          enum: [pending, in_progress, review, done]
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+        area:
+          type: string
+          enum: [comercial, financeiro, operacoes, marketing, juridico, estrutura, sistema, empresa]
+        dueDate:
+          type: string
+          format: date
+      required:
+        - title
+        - status
+        - priority
+        - area
+
+    DemandUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        status:
+          type: string
+          enum: [pending, in_progress, review, done]
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+        area:
+          type: string
+          enum: [comercial, financeiro, operacoes, marketing, juridico, estrutura, sistema, empresa]
+        dueDate:
+          type: string
+          format: date
+
+    DemandsSummary:
+      type: object
+      properties:
+        total:
+          type: number
+        pending:
+          type: number
+        in_progress:
+          type: number
+        review:
+          type: number
+        done:
+          type: number
+        urgent:
+          type: number
+      required:
+        - total
+        - pending
+        - in_progress
+        - review
+        - done
+        - urgent
+
+    # ── FINANCIAL ─────────────────────────────────────────────────────
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: number
+        type:
+          type: string
+          enum: [income, expense]
+        category:
+          type: string
+        description:
+          type: string
+        amount:
+          type: number
+        date:
+          type: string
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - category
+        - description
+        - amount
+        - date
+        - createdAt
+
+    TransactionInput:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [income, expense]
+        category:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          minLength: 1
+        amount:
+          type: number
+          minimum: 0.01
+        date:
+          type: string
+          format: date
+      required:
+        - type
+        - category
+        - description
+        - amount
+        - date
+
+    TransactionUpdate:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [income, expense]
+        category:
+          type: string
+        description:
+          type: string
+        amount:
+          type: number
+          minimum: 0.01
+        date:
+          type: string
+          format: date
+
+    CategorySummary:
+      type: object
+      properties:
+        category:
+          type: string
+        total:
+          type: number
+        count:
+          type: number
+      required:
+        - category
+        - total
+        - count
+
+    MonthlyData:
+      type: object
+      properties:
+        month:
+          type: string
+        income:
+          type: number
+        expense:
+          type: number
+        balance:
+          type: number
+      required:
+        - month
+        - income
+        - expense
+        - balance
+
+    FinancialSummary:
+      type: object
+      properties:
+        totalIncome:
+          type: number
+        totalExpense:
+          type: number
+        balance:
+          type: number
+        byCategory:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategorySummary"
+        monthlyTrend:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonthlyData"
+      required:
+        - totalIncome
+        - totalExpense
+        - balance
+        - byCategory
+        - monthlyTrend
