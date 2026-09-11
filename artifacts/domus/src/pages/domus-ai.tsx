@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import { Send, Sparkles, Triangle, Plus } from "lucide-react"
+import { Send, Sparkles, Triangle, Plus, RotateCcw } from "lucide-react"
 import { useLocation } from "wouter"
 import { cn } from "@/lib/utils"
 
@@ -15,63 +15,75 @@ interface Message {
   actions?: { label: string; href: string }[]
 }
 
-// ── Seed conversation ──────────────────────────
+interface SessionUsage {
+  calls: number
+  inputTokens: number
+  outputTokens: number
+  totalTokens: number
+}
+
+const ZERO_USAGE: SessionUsage = { calls: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+const USAGE_STORAGE_KEY = "domus-ai-session-usage"
+const SESSION_ID_STORAGE_KEY = "domus-ai-session-id"
+
+// ── Session usage (client-side demo counter) ───
+
+function loadUsage(): SessionUsage {
+  try {
+    const raw = sessionStorage.getItem(USAGE_STORAGE_KEY)
+    if (!raw) return ZERO_USAGE
+    const parsed = JSON.parse(raw)
+    return {
+      calls: Number(parsed.calls) || 0,
+      inputTokens: Number(parsed.inputTokens) || 0,
+      outputTokens: Number(parsed.outputTokens) || 0,
+      totalTokens: Number(parsed.totalTokens) || 0,
+    }
+  } catch {
+    return ZERO_USAGE
+  }
+}
+
+function saveUsage(usage: SessionUsage) {
+  try {
+    sessionStorage.setItem(USAGE_STORAGE_KEY, JSON.stringify(usage))
+  } catch {
+    // sessionStorage unavailable (private mode, etc.) — the demo still works,
+    // it just won't remember the counter across a reload.
+  }
+}
+
+function getOrCreateSessionId(): string {
+  try {
+    const existing = sessionStorage.getItem(SESSION_ID_STORAGE_KEY)
+    if (existing) return existing
+    const id = crypto.randomUUID()
+    sessionStorage.setItem(SESSION_ID_STORAGE_KEY, id)
+    return id
+  } catch {
+    return crypto.randomUUID()
+  }
+}
+
+// ── Helpers ────────────────────────────────────
 
 function now(offsetMin = 0) {
   const d = new Date(Date.now() - offsetMin * 60000)
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
 }
 
-const SEED_MESSAGES: Message[] = [
-  {
-    id: "1",
-    role: "user",
-    text: "Quais projetos precisam de atenção essa semana?",
-    timestamp: now(14),
-  },
-  {
-    id: "2",
-    role: "ai",
-    text: "Dois projetos requerem atenção imediata:\n\n**P-238 — Loja Horizonte (Horizonte)**\nCusto realizado (R$ 112.400) está 8% acima do planejado (R$ 104.000). Responsável: Rafael Nunes. Prazo: 30/09/2026.\n\n**P-239 — Café Nômade (Vila Madalena)**\nA aprovação do layout final vence hoje. Helena Prado está acompanhando, mas não há confirmação do cliente ainda.\n\nDeseja que eu notifique os responsáveis ou registre uma ação de acompanhamento?",
-    timestamp: now(13),
-    actions: [
-      { label: "Ver P-238", href: "/projetos?id=P-238" },
-      { label: "Ver P-239", href: "/projetos?id=P-239" },
-    ],
-  },
-  {
-    id: "3",
-    role: "user",
-    text: "Qual o resultado financeiro previsto do mês?",
-    timestamp: now(10),
-  },
-  {
-    id: "4",
-    role: "ai",
-    text: "Aqui está o resumo financeiro da Vértice Espaços:\n\n• **Receita prevista:** R$ 248.000\n• **Receita já recebida:** R$ 72.000\n• **Despesas previstas:** R$ 176.400\n• **Despesas pagas:** R$ 15.900\n• **Resultado previsto:** R$ 71.600\n• **Margem:** 28,9%\n\n⚠️ Atenção: o recebimento de **R$ 18.500 da Alba Tecnologia** (F-005) está em atraso desde 12/08. Recomendo priorizar a cobrança.",
-    timestamp: now(9),
-    actions: [{ label: "Ver lançamento", href: "/financeiro?id=F-005" }],
-  },
-  {
-    id: "5",
-    role: "user",
-    text: "A demanda D-1044 da Lumina está sem responsável. Pode atribuir para a Nina Alves?",
-    timestamp: now(5),
-  },
-  {
-    id: "6",
-    role: "ai",
-    text: "Feito! Atribuí a demanda **D-1044 — Estande para Feira Lumina** (Lumina Cosméticos, urgente) para **Nina Alves**.\n\nCom isso, o alerta \"Sem responsável\" foi removido do painel de Visão Geral. Quer que eu também avise a Nina por e-mail ou registre um comentário na demanda?",
-    timestamp: now(4),
-    actions: [{ label: "Ver D-1044", href: "/demandas?id=D-1044" }],
-  },
-]
+const WELCOME_MESSAGE: Message = {
+  id: "welcome",
+  role: "ai",
+  text: "Olá! Sou a Domus AI da Vértice Espaços. Posso ajudar você a pensar sobre demandas, projetos e financeiro. O que você quer resolver agora?",
+  timestamp: now(),
+}
 
 const SUGGESTIONS = [
-  "Crie uma demanda para o Grupo Marea",
-  "Quais tarefas vencem essa semana?",
-  "Resumo dos projetos em obra",
-  "Projete o fluxo de caixa do próximo mês",
+  "Como devo priorizar minhas demandas essa semana?",
+  "O que olhar antes de fechar o mês no financeiro?",
+  "Como organizar o cronograma de um projeto novo?",
+  "Dê dicas para reduzir atraso em obras.",
 ]
 
 // ── Message bubble ────────────────────────────
@@ -158,21 +170,52 @@ function TypingIndicator() {
   )
 }
 
+// ── Session usage panel ────────────────────────
+
+function SessionUsagePanel({ usage, onReset }: { usage: SessionUsage; onReset: () => void }) {
+  return (
+    <div className="flex items-center gap-3 px-3 py-1.5 rounded-full bg-secondary/40 border border-border text-[10px] text-muted-foreground">
+      <span className="font-medium text-foreground">Uso desta sessão</span>
+      <span>{usage.calls} chamada{usage.calls === 1 ? "" : "s"}</span>
+      <span className="hidden sm:inline">· entrada {usage.inputTokens} tok</span>
+      <span className="hidden sm:inline">· saída {usage.outputTokens} tok</span>
+      <span>· total {usage.totalTokens} tok</span>
+      <button
+        type="button"
+        onClick={onReset}
+        title="Zerar medição da sessão"
+        className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-border hover:border-primary/30 hover:text-foreground transition-all"
+      >
+        <RotateCcw className="h-2.5 w-2.5" />
+        Zerar medição da sessão
+      </button>
+    </div>
+  )
+}
+
 // ── Page ─────────────────────────────────────
 
 export default function DomusAIPage() {
-  const [messages, setMessages] = useState<Message[]>(SEED_MESSAGES)
+  const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE])
   const [input, setInput] = useState("")
   const [typing, setTyping] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [usage, setUsage] = useState<SessionUsage>(() => loadUsage())
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const sessionIdRef = useRef<string>(getOrCreateSessionId())
   const [, navigate] = useLocation()
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, typing])
 
-  function sendMessage(text: string) {
+  function resetUsage() {
+    setUsage(ZERO_USAGE)
+    saveUsage(ZERO_USAGE)
+  }
+
+  async function sendMessage(text: string) {
     const trimmed = text.trim()
     if (!trimmed || typing) return
 
@@ -185,18 +228,49 @@ export default function DomusAIPage() {
     setMessages(prev => [...prev, userMsg])
     setInput("")
     setTyping(true)
+    setError(null)
 
-    // Simulated AI reply after a short delay
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/chat/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: trimmed, sessionId: sessionIdRef.current }),
+      })
+
+      const body = await res.json().catch(() => null)
+
+      if (!res.ok) {
+        const message =
+          body && typeof body.error === "string"
+            ? body.error
+            : "Não foi possível falar com a Domus AI agora. Tente novamente em instantes."
+        setError(message)
+        return
+      }
+
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "ai",
-        text: "Entendido! Estou processando sua solicitação com base nos dados da Vértice Espaços. Esta é uma demonstração — em produção, eu consultaria todos os módulos em tempo real para trazer uma resposta completa.",
+        text: body.message.content,
         timestamp: now(),
       }
       setMessages(prev => [...prev, aiMsg])
+
+      setUsage(prev => {
+        const next: SessionUsage = {
+          calls: prev.calls + 1,
+          inputTokens: prev.inputTokens + (body.usage?.inputTokens ?? 0),
+          outputTokens: prev.outputTokens + (body.usage?.outputTokens ?? 0),
+          totalTokens: prev.totalTokens + (body.usage?.totalTokens ?? 0),
+        }
+        saveUsage(next)
+        return next
+      })
+    } catch {
+      setError("Não foi possível conectar à Domus AI. Verifique sua conexão e tente novamente.")
+    } finally {
       setTyping(false)
-    }, 1600)
+    }
   }
 
   function handleSubmit(ev: React.FormEvent) {
@@ -213,22 +287,21 @@ export default function DomusAIPage() {
     <div className="h-full flex flex-col bg-background pb-16 md:pb-0 overflow-hidden">
       {/* Header */}
       <div className="shrink-0 px-6 md:px-8 py-4 border-b border-border bg-background">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
-            <Triangle className="h-4 w-4 fill-primary text-primary" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-semibold text-foreground leading-tight">Domus AI</h1>
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wider uppercase bg-primary/10 text-primary border border-primary/20">
-                <Sparkles className="h-2.5 w-2.5" />
-                Demo
-              </span>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
+              <Triangle className="h-4 w-4 fill-primary text-primary" />
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Assistente inteligente da Vértice Espaços
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-semibold text-foreground leading-tight">Domus AI</h1>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Assistente inteligente da Vértice Espaços
+              </p>
+            </div>
           </div>
+          <SessionUsagePanel usage={usage} onReset={resetUsage} />
         </div>
       </div>
 
@@ -238,7 +311,7 @@ export default function DomusAIPage() {
         <div className="flex justify-center">
           <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/50 border border-border text-xs text-muted-foreground">
             <Sparkles className="h-3 w-3 text-primary" />
-            Conversa de demonstração — dados reais da Vértice Espaços
+            Respostas geradas em tempo real pela OpenAI, no contexto da Vértice Espaços
           </div>
         </div>
 
@@ -250,9 +323,18 @@ export default function DomusAIPage() {
         <div ref={bottomRef} />
       </div>
 
+      {/* Error banner */}
+      {error && (
+        <div className="shrink-0 px-4 md:px-8">
+          <div className="px-4 py-2 rounded-lg bg-destructive/10 border border-destructive/30 text-xs text-destructive">
+            {error}
+          </div>
+        </div>
+      )}
+
       {/* Suggestions */}
       {!typing && (
-        <div className="shrink-0 px-4 md:px-8 pb-2 overflow-x-auto">
+        <div className="shrink-0 px-4 md:px-8 pb-2 pt-2 overflow-x-auto">
           <div className="flex gap-2 min-w-max">
             {SUGGESTIONS.map(s => (
               <button
@@ -279,6 +361,7 @@ export default function DomusAIPage() {
               placeholder="Pergunte sobre projetos, demandas, financeiro…"
               className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
               disabled={typing}
+              maxLength={2000}
               onKeyDown={e => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault()
@@ -301,7 +384,7 @@ export default function DomusAIPage() {
           </button>
         </form>
         <p className="text-[10px] text-muted-foreground text-center mt-2">
-          Demonstração — em produção, a Domus AI teria acesso a todos os dados em tempo real.
+          MVP acadêmico — a Domus AI usa a API da OpenAI. Navegar pelos outros módulos não consome tokens.
         </p>
       </div>
     </div>

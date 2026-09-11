@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { desc, eq } from "drizzle-orm";
 import { db, transactionsTable } from "@workspace/db";
+import { dateToDateString } from "../lib/dates";
 import {
   CreateTransactionBody,
   UpdateTransactionBody,
@@ -38,7 +39,11 @@ router.post("/financial/transactions", async (req, res): Promise<void> => {
 
   const [tx] = await db
     .insert(transactionsTable)
-    .values({ ...parsed.data, amount: String(parsed.data.amount) })
+    .values({
+      ...parsed.data,
+      amount: String(parsed.data.amount),
+      date: dateToDateString(parsed.data.date),
+    })
     .returning();
 
   res.status(201).json(CreateTransactionResponse.parse({ ...tx, amount: parseFloat(tx.amount) }));
@@ -61,6 +66,9 @@ router.patch("/financial/transactions/:id", async (req, res): Promise<void> => {
   const updateData: Record<string, unknown> = { ...parsed.data };
   if (parsed.data.amount !== undefined) {
     updateData.amount = String(parsed.data.amount);
+  }
+  if (parsed.data.date !== undefined) {
+    updateData.date = dateToDateString(parsed.data.date);
   }
 
   const [tx] = await db
