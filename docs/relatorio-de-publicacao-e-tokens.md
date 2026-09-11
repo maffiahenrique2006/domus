@@ -2,8 +2,10 @@
 
 **Data/hora da entrega:** 2026-09-11, 11:45 (America/Sao_Paulo)
 **Repositório:** https://github.com/maffiahenrique2006/domus
-**Branch final:** `mvp/openai-integration-e-correcoes` (mesclada em `main`)
-**Commit final:** ver seção "Commit final" abaixo (preenchido após o push)
+**Pull request:** https://github.com/maffiahenrique2006/domus/pull/1
+**Branch de trabalho:** `mvp/openai-integration-e-correcoes` (commit `48a7a88`), mesclada em `main`
+**Branch final / commit final:** `main` @ `73ccf064e8d8337e13acb0beef3c2b0bd8874026`
+(`origin/main` confirmado apontando para este commit após o merge)
 
 ---
 
