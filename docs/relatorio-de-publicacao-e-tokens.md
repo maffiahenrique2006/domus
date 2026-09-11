@@ -6,6 +6,7 @@
 **Branch de trabalho:** `mvp/openai-integration-e-correcoes` (commit `48a7a88`), mesclada em `main`
 **Branch final / commit final:** `main` @ `73ccf064e8d8337e13acb0beef3c2b0bd8874026`
 (`origin/main` confirmado apontando para este commit após o merge)
+**Atualizado em:** 2026-09-11, 11:58 — adicionado teste real com chave de produção (seções 3, 5, 6, 9)
 
 ---
 
@@ -17,7 +18,11 @@ Este trabalho foi conduzido **sem acesso ao Replit**: o acesso à conta/workspac
 - **Não verificável sem o Replit** (ficam pendentes para quando o acesso for restabelecido):
   - Presença/nome dos Secrets configurados na conta Replit (`OPENAI_API_KEY`, `OPENAI_MODEL`, `DATABASE_URL`, etc.) — só quem loga no Replit consegue ver isso.
   - Publicação real (deploy) no Replit e teste da URL pública.
-  - Uma chamada real à OpenAI com uma chave de produção — nenhuma chave foi usada, pedida ou colada nesta sessão, conforme instrução explícita de nunca solicitar segredos no chat.
+
+**Atualização (11:58):** depois da entrega inicial, o dono da conta colou uma `OPENAI_API_KEY` real diretamente nesta conversa, pedindo para publicar "por aqui" em vez do Replit. Duas coisas relevantes sobre isso:
+
+1. **Essa chave deve ser tratada como comprometida** a partir do momento em que passou por texto de chat — o dono da conta foi orientado a revogá-la em platform.openai.com/api-keys e gerar uma nova, independentemente do teste abaixo.
+2. Não havia um "aqui" público para publicar (esta sessão roda num terminal local, sem hosting). Optou-se por usar a chave **uma única vez, só localmente** (nunca publicada, sem URL pública, chave nunca salva em disco/arquivo/commit) para finalmente provar a chamada real e capturar números de token verdadeiros — ver seções 3, 5 e 6.
 - A única versão do projeto disponível para este trabalho foi `origin/main` no commit `08e1b18b1bbcc95558e8434fb88c3c0908bd8ccc` — a mesma versão antiga mencionada no pedido original, sem integração real com a OpenAI. Qualquer alteração feita exclusivamente dentro do Replit (ex.: a configuração da chave da OpenAI) e nunca enviada ao GitHub **não pôde ser recuperada** — esse trabalho, se existia, foi perdido junto com o acesso à conta.
 
 ---
@@ -110,7 +115,7 @@ Todos os testes abaixo foram rodados localmente (macOS, fora do Replit), com um 
 | Domus AI sem `OPENAI_API_KEY` | `POST /api/chat/messages` sem a variável definida | ✅ `503`, mensagem clara em português, sem detalhes internos no corpo nem no log |
 | Limite de tamanho da mensagem | `POST` com 2001 caracteres | ✅ `400 {"error":"Mensagem inválida."}` |
 | Limite de frequência | 15 chamadas seguidas ao chat | ✅ Após o limite (12/60s por IP), passa a devolver `429` |
-| Chamada real da Domus AI + tokens > 0 | — | ⚠️ **Não executado** — exigiria uma `OPENAI_API_KEY` real, que não foi pedida nem usada nesta sessão (ver seção 6) |
+| Chamada real da Domus AI + tokens > 0 | 2 perguntas reais via `POST /api/chat/messages`, servidor local (nunca publicado) | ✅ `200`, respostas coerentes em português, `usage.totalTokens > 0` nas duas (ver seção 6) |
 | Testes automatizados existentes | procurado por scripts de teste no monorepo | Não há suíte de testes (`test`) configurada nos `package.json` deste projeto — nada para rodar além do typecheck/build acima |
 
 ---
@@ -131,20 +136,25 @@ Isso não pôde ser testado num deploy real do Replit (sem acesso à conta). A s
 
 ## 5. Modelo da OpenAI utilizado
 
-Não fixado no código — lido de `process.env.OPENAI_MODEL`, conforme exigido (Etapa 4: "não trocar silenciosamente um modelo já configurado"). Quem configurar o Secret no Replit decide o modelo (ex.: `gpt-4.1-mini`). Nenhuma chamada real foi feita nesta sessão, então nenhum modelo específico foi exercitado de fato.
+Não fixado no código — lido de `process.env.OPENAI_MODEL`, conforme exigido (Etapa 4: "não trocar silenciosamente um modelo já configurado"). Quem configurar o Secret decide o modelo.
+
+No teste local com chave real (seção 3), foi usado `gpt-5-mini` — escolhido consultando `GET /v1/models` com a própria chave para confirmar um modelo pequeno e disponível na conta, já que nenhum modelo específico tinha sido pedido. A OpenAI respondeu efetivamente com `gpt-5-mini-2025-08-07`. Isso foi só para o teste local; o Secret `OPENAI_MODEL` de produção (Replit) continua a critério de quem configurar.
 
 ---
 
 ## 6. Tokens medidos no teste desta entrega
 
-**Chamadas realizadas à OpenAI nesta sessão: 0.**
-Entrada: 0 · Saída: 0 · Total: 0.
+**Chamadas reais à OpenAI: 2** (servidor local, nunca publicado — sem URL pública).
 
-Não foi feita nenhuma chamada real à OpenAI porque:
-1. Nenhuma `OPENAI_API_KEY` foi fornecida, pedida ou colada nesta sessão (instrução explícita do pedido original).
-2. O Replit — onde os Secrets desta conta estão configurados — ficou inacessível durante o trabalho.
+| Chamada | Modelo | `responseId` | Entrada | Saída | Total |
+|---|---|---|---|---|---|
+| 1 — "Quais são as três áreas que a Domus AI ajuda a organizar em um escritório de arquitetura?" | `gpt-5-mini-2025-08-07` | `resp_09fa671da0758994016aa416e5f59487d297303f3ee579b81b` | 244 | 224 | 468 |
+| 2 — "Me dê uma dica curta para reduzir atraso em obras da Vértice Espaços." | `gpt-5-mini-2025-08-07` | `resp_054719d25b9a7276016aa416f205c087d2989549497ae68716` | 241 | 231 | 472 |
+| **Total** | | | **485** | **455** | **940** |
 
-O que **foi** verificado é o caminho completo até a chamada: o servidor monta a requisição corretamente para `client.responses.create`, e o tratamento de erro por ausência de chave devolve `503` de forma limpa (testado, seção 3). Assim que os Secrets estiverem configurados (no Replit ou localmente), a primeira pergunta real na Domus AI deve gerar `usage.totalTokens > 0` — isso fica como verificação pendente para quem tiver acesso à chave.
+Ambas as respostas vieram coerentes, em português, e no contexto certo (áreas do sistema / dica para a Vértice Espaços). O log estruturado do servidor (`event: "domus_ai_usage"`) registrou exatamente esses números, sem o conteúdo das mensagens — conferido manualmente nos logs desta sessão.
+
+Contexto importante: essa chave foi colada pelo dono da conta diretamente nesta conversa (não solicitada) para permitir esse teste único e local. Ela foi usada apenas como variável de ambiente de processo, nunca escrita em disco, arquivo, `.env` ou commit, e o servidor nunca foi exposto publicamente. **O dono da conta foi orientado a revogá-la e gerar uma nova assim que possível**, já que uma chave colada em chat deve ser considerada comprometida independentemente do uso que se fez dela.
 
 ---
 
@@ -160,9 +170,9 @@ Navegar por Visão Geral, Demandas, Projetos e Financeiro não altera esse conta
 
 ## 8. Pendências (dependem de acesso ao Replit / a uma chave real)
 
-1. **Confirmar os Secrets no Replit** (`OPENAI_API_KEY`, `OPENAI_MODEL`, `DATABASE_URL`) — apenas quem tem acesso à conta consegue ver isso.
-2. **Publicar de fato no Replit** e abrir a URL pública — não foi possível nesta sessão.
-3. **Rodar uma pergunta real na Domus AI publicada** e confirmar `usage.totalTokens > 0` com a chave de produção.
+1. **Revogar a chave da OpenAI que foi colada nesta conversa** e gerar uma nova — prioridade imediata, independente do resto (seção 6).
+2. **Confirmar os Secrets no Replit** (`OPENAI_API_KEY` — com a chave nova — `OPENAI_MODEL`, `DATABASE_URL`) — apenas quem tem acesso à conta consegue ver isso.
+3. **Publicar de fato no Replit** e abrir a URL pública — não foi possível nesta sessão (a integração real já foi comprovada localmente, seção 6, mas isso não substitui testar a versão publicada).
 4. **Conferir a sintaxe `build`/`run` do `.replit`** contra o painel de Deployments do Replit antes de publicar (não pôde ser validada contra o ambiente real).
 5. Verificar se algum trabalho feito exclusivamente dentro do Replit (fora do Git) — por exemplo, a configuração da chave da OpenAI mencionada no pedido original, ou uma eventual integração já iniciada lá — foi perdido com a queda de acesso à conta. Se o acesso for recuperado, vale conferir o histórico/checkpoints do Replit antes de sobrescrever qualquer coisa.
 
@@ -170,7 +180,8 @@ Navegar por Visão Geral, Demandas, Projetos e Financeiro não altera esse conta
 
 ## 9. Confirmação de segurança
 
-- Nenhum valor de `OPENAI_API_KEY`, `DATABASE_URL`, `SESSION_SECRET` ou qualquer outro segredo foi exibido, solicitado, digitado ou commitado nesta sessão.
-- `git diff` da entrega foi revisado à procura de padrões de chave/senha — nenhum encontrado (seção 3).
+- Nenhum valor de `DATABASE_URL`, `SESSION_SECRET` ou qualquer outro segredo foi exibido, solicitado, digitado ou commitado nesta sessão.
+- `git diff` de toda a entrega foi revisado à procura de padrões de chave/senha — nenhum encontrado (seção 3). A chave real usada no teste local (seção 6) nunca foi escrita em nenhum arquivo do repositório, `.env`, log ou commit — existiu só como variável de ambiente de um processo local, pelo tempo do teste.
 - `.env.example` contém apenas nomes de variáveis, sem valores.
-- Logs do servidor (testados em produção local) registram apenas metadados (modelo, contagem de tokens, id da resposta, id de sessão) — nunca o conteúdo das mensagens nem segredos.
+- Logs do servidor (testados em produção local, com e sem chave real) registram apenas metadados (modelo, contagem de tokens, id da resposta, id de sessão) — nunca o conteúdo das mensagens nem segredos.
+- **Exceção registrada:** o dono da conta colou uma `OPENAI_API_KEY` real diretamente nesta conversa (não solicitada). Essa chave está exposta no histórico da conversa e deve ser considerada comprometida — orientação dada para revogá-la e gerar uma nova (pendência #1 da seção 8), independentemente de ter sido usada só localmente e de forma limitada.
