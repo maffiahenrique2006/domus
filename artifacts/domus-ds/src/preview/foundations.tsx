@@ -231,14 +231,12 @@ export function ColorsPage() {
           </p>
         </div>
         <Guidelines
-          dos={[
-            'Use sempre o papel semântico (ex.: var(--primary)), nunca o primitivo (var(--azul-500)) em componentes.',
-            'Toda troca de tema acontece nos papéis semânticos; os primitivos são constantes.',
-            'Foregrounds devem ser legíveis sobre a superfície pareada (mínimo WCAG AA).',
-          ]}
-          donts={[
-            'Não use primitivos como --ink-700 diretamente num componente — ele perde o tema claro.',
-            'Não invente novos papéis; mapeie sobre os existentes.',
+          items={[
+            { kind: 'do', text: 'Use sempre o papel semântico (ex.: var(--primary)), nunca o primitivo (var(--azul-500)) em componentes.' },
+            { kind: 'do', text: 'Toda troca de tema acontece nos papéis semânticos; os primitivos são constantes.' },
+            { kind: 'do', text: 'Foregrounds devem ser legíveis sobre a superfície pareada (mínimo WCAG AA).' },
+            { kind: 'dont', text: 'Não use primitivos como --ink-700 diretamente num componente — ele perde o tema claro.' },
+            { kind: 'dont', text: 'Não invente novos papéis; mapeie sobre os existentes.' },
           ]}
         />
         <div className="grid grid-cols-3 gap-4 sm:grid-cols-6">
@@ -364,12 +362,10 @@ export function FontsPage() {
           <p className="font-mono text-xs text-muted-foreground/60">POST /api/financial/transactions</p>
         </div>
         <Guidelines
-          dos={[
-            'Use IBM Plex Mono para qualquer número financeiro, ID de documento ou trecho de código.',
-            'Alterne para o peso 500 quando precisar destacar um valor sem mudar a cor.',
-          ]}
-          donts={[
-            'Não misture Inter e IBM Plex Mono na mesma linha de texto corrido.',
+          items={[
+            { kind: 'do', text: 'Use IBM Plex Mono para qualquer número financeiro, ID de documento ou trecho de código.' },
+            { kind: 'do', text: 'Alterne para o peso 500 quando precisar destacar um valor sem mudar a cor.' },
+            { kind: 'dont', text: 'Não misture Inter e IBM Plex Mono na mesma linha de texto corrido.' },
           ]}
         />
       </section>
@@ -398,8 +394,10 @@ export function LayoutPage() {
           ))}
         </div>
         <Guidelines
-          dos={['Mantenha todos os espaços em múltiplos de 4px.']}
-          donts={['Não use valores como 5px, 7px ou 11px — não pertencem à escala.']}
+          items={[
+            { kind: 'do', text: 'Mantenha todos os espaços em múltiplos de 4px.' },
+            { kind: 'dont', text: 'Não use valores como 5px, 7px ou 11px — não pertencem à escala.' },
+          ]}
         />
       </section>
 

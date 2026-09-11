@@ -63,7 +63,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ChatMessage"
+                $ref: "#/components/schemas/SendChatMessageResult"
 
   /chat/messages/{id}:
     delete:
@@ -339,8 +339,45 @@ components:
         content:
           type: string
           minLength: 1
+          maxLength: 2000
+        sessionId:
+          type: string
+          maxLength: 100
+          description: Client-generated identifier for the demo session (used only to group token-usage logs; not persisted with message content).
       required:
         - content
+
+    AiUsage:
+      type: object
+      description: Token usage reported by the OpenAI Responses API for a single Domus AI call.
+      properties:
+        model:
+          type: string
+        responseId:
+          type: string
+        inputTokens:
+          type: number
+        outputTokens:
+          type: number
+        totalTokens:
+          type: number
+      required:
+        - model
+        - responseId
+        - inputTokens
+        - outputTokens
+        - totalTokens
+
+    SendChatMessageResult:
+      type: object
+      properties:
+        message:
+          $ref: "#/components/schemas/ChatMessage"
+        usage:
+          $ref: "#/components/schemas/AiUsage"
+      required:
+        - message
+        - usage
 
     # ── DEMANDS ───────────────────────────────────────────────────────
     Demand:

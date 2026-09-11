@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { desc, eq, sql } from "drizzle-orm";
 import { db, demandsTable } from "@workspace/db";
+import { dateToDateString } from "../lib/dates";
 import {
   CreateDemandBody,
   UpdateDemandBody,
@@ -48,7 +49,10 @@ router.post("/demands", async (req, res): Promise<void> => {
     return;
   }
 
-  const [demand] = await db.insert(demandsTable).values(parsed.data).returning();
+  const [demand] = await db
+    .insert(demandsTable)
+    .values({ ...parsed.data, dueDate: dateToDateString(parsed.data.dueDate) })
+    .returning();
   res.status(201).json(CreateDemandResponse.parse(demand));
 });
 
@@ -89,7 +93,7 @@ router.patch("/demands/:id", async (req, res): Promise<void> => {
 
   const [demand] = await db
     .update(demandsTable)
-    .set({ ...parsed.data, updatedAt: new Date() })
+    .set({ ...parsed.data, dueDate: dateToDateString(parsed.data.dueDate), updatedAt: new Date() })
     .where(eq(demandsTable.id, params.data.id))
     .returning();
 
