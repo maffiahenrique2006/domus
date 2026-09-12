@@ -2,6 +2,7 @@
   "buildCommand": "export PORT=5000 BASE_PATH=/ NODE_ENV=production; pnpm --filter @workspace/domus run build && pnpm --filter @workspace/api-server exec node build-vercel.mjs",
   "outputDirectory": "artifacts/domus/dist/public",
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/((?!api/|assets/).*)", "destination": "/index.html" }
   ]
 }

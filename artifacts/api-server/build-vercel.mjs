@@ -1,15 +1,16 @@
 // Bundles this same Express app (used by the Replit deployment) into a
-// single-file Vercel Node function at <repo root>/api/[...path].js. A
-// single bundled file sidesteps Vercel's cross-package file tracing in
-// this pnpm workspace, which otherwise fails to include this package's
-// src/* at runtime when a thin entrypoint imports it by relative path.
+// single-file Vercel Node function at <repo root>/api/index.js. A single
+// bundled file sidesteps Vercel's cross-package file tracing in this pnpm
+// workspace, which otherwise fails to include this package's src/* at
+// runtime when a thin entrypoint imports it by relative path.
 //
-// The "[...path]" catch-all filename is Vercel's own convention for
-// routing every /api/* request to one function while preserving the full
-// original path on the request object — required here because the
-// Express app itself does `app.use("/api", router)` and expects to see
-// the full "/api/<sub-path>" URL, not a path Vercel already rewrote down
-// to just "/api".
+// vercel.json rewrites every /api/<sub-path> request to this function
+// (destination "/api"); Vercel preserves the original request's full path
+// when invoking the function this way, which is what the Express app
+// needs since it does `app.use("/api", router)` and expects to see the
+// full "/api/<sub-path>" URL, not just "/api". (A "[...path]" catch-all
+// filename was tried first but only matched a single path segment in
+// practice — this plain rewrite is what actually works.)
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,7 +21,7 @@ globalThis.require = createRequire(import.meta.url);
 
 const packageDir = path.dirname(fileURLToPath(import.meta.url));
 const apiDir = path.resolve(packageDir, "../../api");
-const outfile = path.resolve(apiDir, "[...path].js");
+const outfile = path.resolve(apiDir, "index.js");
 
 await mkdir(apiDir, { recursive: true });
 
