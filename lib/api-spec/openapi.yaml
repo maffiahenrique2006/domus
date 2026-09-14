@@ -10,6 +10,10 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Google sign-in and session
+  - name: billing
+    description: Stripe subscription (test mode)
   - name: chat
     description: AI chat with Domus
   - name: demands
@@ -30,6 +34,62 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── AUTH ──────────────────────────────────────────────────────────────
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: End the current session
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get the signed-in user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Not authenticated
+
+  # ── BILLING ───────────────────────────────────────────────────────────
+  /billing/checkout:
+    post:
+      operationId: createCheckoutSession
+      tags: [billing]
+      summary: Create a Stripe Checkout session for the Pro plan
+      responses:
+        "200":
+          description: Checkout session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutSession"
+
+  /billing/status:
+    get:
+      operationId: getBillingStatus
+      tags: [billing]
+      summary: Current subscription status
+      responses:
+        "200":
+          description: Billing status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingStatus"
 
   # ── CHAT ──────────────────────────────────────────────────────────────
   /chat/messages:
@@ -312,6 +372,48 @@ components:
           type: boolean
       required:
         - success
+
+    # ── AUTH ─────────────────────────────────────────────────────────
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: number
+        email:
+          type: string
+        name:
+          type: string
+        pictureUrl:
+          type: ["string", "null"]
+        plan:
+          type: string
+          enum: [free, pro]
+      required:
+        - id
+        - email
+        - name
+        - plan
+
+    # ── BILLING ──────────────────────────────────────────────────────
+    CheckoutSession:
+      type: object
+      properties:
+        url:
+          type: string
+      required:
+        - url
+
+    BillingStatus:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: [free, pro]
+        active:
+          type: boolean
+      required:
+        - plan
+        - active
 
     # ── CHAT ──────────────────────────────────────────────────────────
     ChatMessage:

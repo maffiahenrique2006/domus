@@ -13,6 +13,40 @@ export interface DeleteResult {
   success: boolean;
 }
 
+export type AuthUserPlan = typeof AuthUserPlan[keyof typeof AuthUserPlan];
+
+
+export const AuthUserPlan = {
+  free: 'free',
+  pro: 'pro',
+} as const;
+
+export interface AuthUser {
+  id: number;
+  email: string;
+  name: string;
+  /** @nullable */
+  pictureUrl?: string | null;
+  plan: AuthUserPlan;
+}
+
+export interface CheckoutSession {
+  url: string;
+}
+
+export type BillingStatusPlan = typeof BillingStatusPlan[keyof typeof BillingStatusPlan];
+
+
+export const BillingStatusPlan = {
+  free: 'free',
+  pro: 'pro',
+} as const;
+
+export interface BillingStatus {
+  plan: BillingStatusPlan;
+  active: boolean;
+}
+
 export type ChatMessageRole = typeof ChatMessageRole[keyof typeof ChatMessageRole];
 
 

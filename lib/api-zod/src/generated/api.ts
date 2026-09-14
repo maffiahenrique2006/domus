@@ -17,6 +17,43 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary End the current session
+ */
+export const LogoutResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
+ * @summary Get the signed-in user
+ */
+export const GetCurrentUserResponse = zod.object({
+  "id": zod.number(),
+  "email": zod.string(),
+  "name": zod.string(),
+  "pictureUrl": zod.string().nullish(),
+  "plan": zod.enum(['free', 'pro'])
+})
+
+
+/**
+ * @summary Create a Stripe Checkout session for the Pro plan
+ */
+export const CreateCheckoutSessionResponse = zod.object({
+  "url": zod.string()
+})
+
+
+/**
+ * @summary Current subscription status
+ */
+export const GetBillingStatusResponse = zod.object({
+  "plan": zod.enum(['free', 'pro']),
+  "active": zod.boolean()
+})
+
+
+/**
  * @summary Get all chat messages
  */
 export const GetChatMessagesResponseItem = zod.object({
