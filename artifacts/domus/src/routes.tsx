@@ -5,6 +5,7 @@ import DemandsPage from "@/pages/demands"
 import ProjectsPage from "@/pages/projects"
 import FinancialPage from "@/pages/financial"
 import DomusAIPage from "@/pages/domus-ai"
+import AccountPage from "@/pages/account"
 import NotFound from "@/pages/not-found"
 
 function AppRoutes() {
@@ -16,6 +17,7 @@ function AppRoutes() {
         <Route path="/projetos" component={ProjectsPage} />
         <Route path="/financeiro" component={FinancialPage} />
         <Route path="/domus-ai" component={DomusAIPage} />
+        <Route path="/conta" component={AccountPage} />
         {/* Legacy redirect */}
         <Route path="/chat" component={() => <Redirect to="/domus-ai" />} />
         <Route component={NotFound} />

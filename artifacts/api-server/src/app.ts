@@ -1,9 +1,12 @@
 import express, { type Express, type ErrorRequestHandler } from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import router from "./routes";
+import { billingWebhookRouter } from "./routes/billing";
+import { attachUser } from "./lib/auth";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -32,8 +35,15 @@ app.use(
   }),
 );
 app.use(cors());
+
+// Stripe's webhook signature check needs the exact raw request body, so it
+// must be mounted before express.json() consumes the stream for everyone else.
+app.use("/api", billingWebhookRouter);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser(process.env.SESSION_SECRET));
+app.use(attachUser);
 
 app.use("/api", router);
 
