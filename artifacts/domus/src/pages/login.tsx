@@ -33,12 +33,12 @@ export default function LoginPage() {
           </div>
           <div>
             <h1 className="text-lg font-semibold leading-tight">Domus System</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">Vértice Espaços</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Seu escritório. Seu jeito de trabalhar.</p>
           </div>
         </div>
 
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Entre com sua conta Google para acessar demandas, projetos, financeiro e a Domus AI.
+          Descreva seu escritório de advocacia e monte sua gestão de clientes, casos, tarefas e financeiro com a Domus.
         </p>
 
         <a

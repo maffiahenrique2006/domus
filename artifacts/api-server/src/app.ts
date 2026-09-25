@@ -1,5 +1,4 @@
 import express, { type Express, type ErrorRequestHandler } from "express";
-import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import path from "node:path";
@@ -34,14 +33,32 @@ app.use(
     },
   }),
 );
-app.use(cors());
+app.disable("x-powered-by");
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  next();
+});
 
 // Stripe's webhook signature check needs the exact raw request body, so it
 // must be mounted before express.json() consumes the stream for everyone else.
 app.use("/api", billingWebhookRouter);
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "128kb" }));
+app.use(express.urlencoded({ extended: false, limit: "128kb" }));
+// Same-origin cookie API. Stripe is mounted above and authenticates by signature.
+app.use("/api", (req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+    const origin = req.get("origin");
+    const allowed = process.env.APP_URL ? new URL(process.env.APP_URL).origin : null;
+    if (req.get("sec-fetch-site") === "cross-site" || (origin && origin !== allowed)) {
+      res.status(403).json({ error: "Origem não autorizada." });
+      return;
+    }
+  }
+  next();
+});
 app.use(cookieParser(process.env.SESSION_SECRET));
 app.use(attachUser);
 
@@ -70,8 +87,9 @@ app.use("/api", (_req, res) => {
 
 // Final error handler — never leak stack traces or internal details to the client.
 const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
-  logger.error({ event: "unhandled_error", err }, "Unhandled request error");
-  res.status(500).json({ error: "Erro interno do servidor." });
+  logger.error({ event: "unhandled_error", errorType: err?.name }, "Unhandled request error");
+  const status = err?.type === "entity.too.large" ? 413 : err instanceof SyntaxError ? 400 : 500;
+  res.status(status).json({ error: status === 500 ? "Erro interno do servidor." : "Requisição inválida ou muito grande." });
 };
 app.use(errorHandler);
 

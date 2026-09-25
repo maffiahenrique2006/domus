@@ -13,12 +13,12 @@ let cachedKey: string | null = null;
 /** Lazily builds (and caches) the Stripe client from process.env.STRIPE_SECRET_KEY. */
 export function getStripeClient(): Stripe {
   const apiKey = process.env.STRIPE_SECRET_KEY;
-  if (!apiKey) {
-    throw new MissingStripeConfigError("STRIPE_SECRET_KEY is not configured");
+  if (!apiKey?.startsWith("sk_test_")) {
+    throw new MissingStripeConfigError("STRIPE_SECRET_KEY must be a test key in this academic MVP");
   }
 
   if (!cachedClient || cachedKey !== apiKey) {
-    cachedClient = new Stripe(apiKey);
+    cachedClient = new Stripe(apiKey, { timeout: 10000, maxNetworkRetries: 1 });
     cachedKey = apiKey;
   }
 

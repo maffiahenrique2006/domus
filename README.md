@@ -1,170 +1,63 @@
-# Domus System
+# Domus System — MVP acadêmico para advocacia
 
-> Plataforma de gestão operacional para escritórios de arquitetura: acompanhe demandas, projetos, financeiro e IA em um único lugar.
+A Domus transforma a descrição da operação de um escritório em uma configuração de gestão revisada pelo gestor. A visão é atender negócios diversos; **esta versão implementa o recorte de escritórios de advocacia**. É independente da Domus oficial.
 
----
+## Fluxo
 
-## O que é
+Login Google → entrevista → revisão da configuração → clientes → demandas → casos e tarefas → financeiro → análise com IA → assinatura Stripe de teste.
 
-Domus é um sistema interno para escritórios de arquitetura gerenciarem o ciclo completo de um projeto — desde a captação de demandas até o fechamento financeiro — com um assistente de IA integrado para alertas e resumos automáticos.
+A IA configura etapas e campos suportados. **Não gera um software arbitrário**, não altera o banco livremente, não calcula prazos processuais, não pesquisa processos nem presta consultoria jurídica. Use apenas informações fictícias na demonstração.
 
-Este repositório contém o **MVP acadêmico** configurado para a *Vértice Espaços* (escritório fictício). É um trabalho de faculdade inspirado na Domus — **não é a Domus oficial**, que está pausada e não é acessada, alterada ou reutilizada por este projeto.
+Os dados operacionais são persistidos em PostgreSQL e separados por escritório no servidor. Não há preenchimento automático com os antigos dados de arquitetura. Os antigos registros e relatórios são preservados como histórico, não como prova da versão atual.
 
-Os módulos de Visão Geral, Demandas, Projetos e Financeiro usam dados locais/mockados no frontend (não dependem do banco para a demonstração visual). A **Domus AI é uma exceção**: ela chama de verdade a API da OpenAI através do servidor — não é uma simulação. O **login com Google e a assinatura via Stripe também são reais**: sem login, não é possível acessar o sistema, e o checkout roda em modo de teste do Stripe (fluxo real, sem dinheiro real).
+## Stack e dados
 
----
+- Interface: React, TypeScript, Vite, Tailwind, Wouter e design system existente.
+- Servidor: Node.js + Express; Drizzle nas tabelas de autenticação e consultas PostgreSQL parametrizadas nos módulos novos.
+- Banco: PostgreSQL relacional com chaves estrangeiras compostas por escritório, migrações versionadas e transações.
+- OpenAI: Responses API no servidor, modelo obrigatório em `OPENAI_MODEL`, respostas estruturadas na entrevista, uso de tokens registrado no banco.
+- Google OAuth: identidade e sessão com cookie assinado, HttpOnly e Secure em produção.
+- Stripe: somente chave de teste, confirmação pelo webhook assinado, proteção contra eventos duplicados e cancelamento ao final do período.
+- Vercel: interface estática e função Node para API, no mesmo domínio.
 
-## Para quem
+## Executar e validar
 
-Escritórios de arquitetura e design de interiores de pequeno e médio porte que hoje gerenciam projetos em planilhas ou ferramentas genéricas (Notion, Trello) e precisam de uma visão integrada de demandas, cronograma e fluxo de caixa.
+Use Node 22 e pnpm. Instale com `pnpm install --frozen-lockfile`. As variáveis estão em `.env.example` (valores devem ser preenchidos em arquivo local não versionado ou no servidor).
 
-**Módulos disponíveis:**
-
-| Módulo | O que faz |
-|---|---|
-| Visão Geral | Dashboard com KPIs, alertas e próximos marcos |
-| Demandas | Gestão de leads e solicitações (lista ou kanban) |
-| Projetos | Fases, tarefas, orçamento e histórico de cada projeto |
-| Financeiro | Contas a receber/pagar e análise de margem por projeto |
-| Domus AI | Assistente inteligente conectado de verdade à OpenAI (único módulo não demonstrativo) |
-
-**O que é real e o que é demonstrativo:**
-
-- **Login com Google é real**: sem uma conta Google autenticada, o app não é acessível — nenhuma tela aparece antes do login.
-- **Assinatura via Stripe é real, em modo de teste**: o botão "Assinar Plano Pro" (na página **Minha conta**) abre um checkout de verdade do Stripe; como a chave configurada é de teste, nenhuma cobrança real acontece, mas o fluxo (checkout, webhook, atualização de plano) é o mesmo de produção.
-- **Domus AI é real**: cada mensagem enviada gera uma chamada de verdade à API da OpenAI, com a resposta e a contagem de tokens vindas diretamente da OpenAI (nada é estimado).
-- **Visão Geral, Demandas, Projetos e Financeiro são demonstrativos**: navegar por esses módulos não faz nenhuma chamada à OpenAI e não consome tokens — é só para dar contexto de produto ao trabalho acadêmico.
-
----
-
-## Como rodar
-
-**Pré-requisitos:** Node.js ≥ 20, pnpm ≥ 9.
-
-```bash
-# 1. Clone o repositório
-git clone https://github.com/maffiahenrique2006/domus.git
-cd domus
-
-# 2. Instale as dependências (monorepo pnpm)
-pnpm install
-
-# 3. Copie e preencha as variáveis de ambiente
-cp .env.example .env
-# edite .env com seus valores (veja "O que precisa" abaixo)
-
-# 4. Inicie os serviços em terminais separados
-pnpm --filter @workspace/domus-ds run dev   # Design system  → :PORT/domus-ds
-pnpm --filter @workspace/domus run dev      # App principal  → :PORT
-pnpm --filter @workspace/api-server run dev # API            → :PORT/api
+```sh
+pnpm run typecheck
+PORT=5000 BASE_PATH=/ NODE_ENV=production pnpm --filter @workspace/domus run build
+pnpm --filter @workspace/api-server run build
+# Carrega .env da raiz e aplica apenas migrações ainda não aplicadas:
+node --env-file=.env lib/db/migrate.mjs
+# Servidor único para API e interface construída:
+node --env-file=.env artifacts/api-server/dist/index.mjs
 ```
 
-> No Replit, os workflows já estão configurados — basta clicar em **Run**.
+Defina `APP_URL=http://localhost:5000`, `PORT=5000`, `BASE_PATH=/` e `NODE_ENV=production` para esse fluxo local. O callback local também precisa estar autorizado no Google. Não compartilhe `.env`.
 
-**Estrutura do monorepo:**
+## Publicação segura
 
-```
-artifacts/
-  domus/        → app React principal (Vite + Tailwind + Wouter)
-  domus-ds/     → design system compartilhado (tokens, componentes)
-  api-server/   → servidor Express (TypeScript)
-lib/            → bibliotecas internas compartilhadas
-scripts/        → utilitários de build e pós-merge
-```
+1. Usar um banco de desenvolvimento/preview separado antes de produção; salvar backup do banco existente.
+2. Conferir `DATABASE_URL`, `SESSION_SECRET`, `APP_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID` e `STRIPE_WEBHOOK_SECRET` no ambiente correto.
+3. Aplicar `lib/db/migrate.mjs` **antes** de publicar a nova API. Não usar `push-force` nem apagar tabelas.
+4. Google: callback `${APP_URL}/api/auth/google/callback`. Stripe: webhook `${APP_URL}/api/billing/webhook`, eventos `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`.
+5. Publicar pelo projeto Vercel já ligado ao repositório. `vercel.json` gera o bundle de API a partir do código-fonte.
+6. Executar o roteiro de aceitação público em [docs/demo-day.md](docs/demo-day.md). Build aprovado não prova login, IA, banco de produção ou pagamento.
 
----
+## Limites desta versão
 
-## O que precisa
+- Uma conta gerencia um escritório; convites e permissões de equipe não estão implementados. Nomes de responsáveis são dados operacionais, não contas com acesso.
+- Free: até 10 tentativas de IA por dia/escritório; Pro de teste: 100. O servidor aplica o limite, incluindo a entrevista. CRUD não usa IA.
+- Sem anexos, integrações com tribunais, emissão de notas, conciliação bancária ou cobrança real.
+- Sem promessa de conformidade jurídica/LGPD completa: dados reais exigem avaliação de privacidade, retenção, backups e controles adicionais.
+- A configuração usa JSON validado para campos variáveis; vínculos e valores financeiros têm colunas e restrições relacionais.
+- O saldo financeiro é a diferença entre recebimentos e pagamentos registrados, não saldo bancário conciliado nem lucro contábil.
 
-Todas as variáveis ficam em `.env` na raiz (copie de `.env.example`). **Nunca commite valores reais** — nem em `.env`, nem em código, nem em prints/logs.
+## Demonstração e evidências
 
-| Variável | Obrigatória | Para quê |
-|---|---|---|
-| `OPENAI_API_KEY` | Sim, para a Domus AI responder | Autentica as chamadas à OpenAI. Usada **somente no servidor** — nunca chega ao navegador. Sem ela, a Domus AI responde com um erro claro em vez de simular uma resposta. |
-| `OPENAI_MODEL` | Sim, para a Domus AI responder | Nome do modelo da OpenAI usado pela Domus AI (ex.: `gpt-4.1-mini`). O servidor nunca troca esse valor por outro modelo silenciosamente. |
-| `DATABASE_URL` | Sim | String de conexão PostgreSQL (Neon, Replit DB ou instância local) |
-| `SESSION_SECRET` | Sim, para o login funcionar | Assina os cookies de sessão e o cookie de state do OAuth |
-| `APP_URL` | Sim, para login e assinatura funcionarem | Origem pública absoluta do app (ex.: `https://domus-mvp.vercel.app`) — usada para montar o `redirect_uri` do Google e as URLs de retorno do Stripe |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Sim, para o login funcionar | Credenciais OAuth do Google Cloud Console. Sem elas, o botão de login responde com um erro claro (503) |
-| `STRIPE_SECRET_KEY` | Sim, para a assinatura funcionar | Chave secreta do Stripe em modo de **teste** (`sk_test_...`) |
-| `STRIPE_PRICE_ID` | Sim, para a assinatura funcionar | ID do Price recorrente ("Plano Pro") criado no Stripe |
-| `STRIPE_WEBHOOK_SECRET` | Sim, para a assinatura funcionar | Assinatura do endpoint de webhook (`whsec_...`), verifica que o evento veio do Stripe |
-| `PORT` | Não no Replit (injetada automaticamente) | Porta de cada serviço |
-| `BASE_PATH` | Sim para o build do frontend | Caminho base do Vite (use `/`) |
-| `NODE_ENV` | Sim em produção | `development` ou `production` |
+- [Roteiro, custos e defesa técnica](docs/demo-day.md)
+- [Modelo de dados](docs/modelo-de-dados.md)
+- [Estado desta entrega](docs/entrega-mvp-advocacia.md)
 
-**Contas / serviços externos:**
-
-- **OpenAI** — a Domus AI usa a API oficial da OpenAI (Responses API) por trás do servidor.
-- **Google Cloud Console** — login OAuth 2.0 ("Sign in with Google").
-- **Stripe** — checkout de assinatura, em modo de teste.
-- PostgreSQL (Neon, Supabase ou Replit DB) para persistir usuários, sessões, demandas, transações e o histórico de chat.
-
-### Configurar o login com Google
-
-1. Abra o [Google Cloud Console](https://console.cloud.google.com/) → crie um projeto (ou use um existente).
-2. Vá em **APIs & Services → OAuth consent screen** → tipo **External** → modo de teste é suficiente para este MVP.
-3. Vá em **APIs & Services → Credentials → Create Credentials → OAuth client ID** → tipo **Web application**.
-4. Em **Authorized redirect URIs**, adicione `${APP_URL}/api/auth/google/callback` para cada ambiente (ex.: `https://domus-mvp.vercel.app/api/auth/google/callback`, e `http://localhost:5000/api/auth/google/callback` se for testar localmente).
-5. Copie o **Client ID** e o **Client Secret** gerados — vão em `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`.
-
-### Configurar a assinatura (Stripe, modo de teste)
-
-1. Crie/entre na sua conta do [Stripe](https://dashboard.stripe.com/) e confirme que está no modo **Test** (alternância no canto superior).
-2. Vá em **Product catalog → Add product** → crie um produto (ex.: "Plano Pro") com um **Price recorrente** (ex.: mensal).
-3. Copie o **Price ID** do preço criado — vai em `STRIPE_PRICE_ID`.
-4. Vá em **Developers → API keys** → copie a **Secret key** de teste (`sk_test_...`) — vai em `STRIPE_SECRET_KEY`.
-5. Vá em **Developers → Webhooks → Add endpoint**, com a URL `${APP_URL}/api/billing/webhook`, escutando pelo menos `checkout.session.completed`, `customer.subscription.updated` e `customer.subscription.deleted`.
-6. Copie o **Signing secret** do endpoint (`whsec_...`) — vai em `STRIPE_WEBHOOK_SECRET`.
-7. Para testar um pagamento, use o [cartão de teste do Stripe](https://stripe.com/docs/testing) `4242 4242 4242 4242`, qualquer data futura e qualquer CVC.
-
-### Configurar os Secrets no Replit
-
-1. No workspace do Replit, abra a aba **Secrets** (ícone de cadeado).
-2. Adicione todas as variáveis obrigatórias listadas na tabela acima (`OPENAI_API_KEY`, `OPENAI_MODEL`, `SESSION_SECRET`, `APP_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`).
-3. Confirme que `DATABASE_URL` já está presente (Replit provisiona automaticamente ao usar o módulo `postgresql-16`).
-4. **Nunca** cole essas chaves em código, no README, em issues ou em qualquer lugar versionado — Secrets do Replit não vão para o Git.
-
-### Publicar no Replit
-
-O `.replit` já define `build` (instala dependências e roda `pnpm run build`) e `run` (inicia o servidor de produção, que serve o frontend e a API `/api` na mesma porta). Para publicar:
-
-1. Confirme que os Secrets acima estão configurados.
-2. Clique em **Deploy** / **Publish** no Replit, com o `deploymentTarget = "autoscale"`.
-3. Depois de publicado, abra a URL pública, faça login com uma conta Google e teste a Domus AI com uma pergunta real.
-
-### Publicar no Vercel
-
-O projeto também está configurado para deploy no Vercel (`vercel.json` + `api/index.js`, um bundle único gerado por `artifacts/api-server/build-vercel.mjs`). As mesmas variáveis de ambiente devem ser configuradas em **Project Settings → Environment Variables**, marcando pelo menos o ambiente **Production**.
-
----
-
-## Medindo os tokens de uma demonstração
-
-Cada resposta da Domus AI usa a Responses API da OpenAI, que devolve o uso real de tokens (`input_tokens`, `output_tokens`, `total_tokens`) — nada aqui é estimado. Esses números aparecem:
-
-- **No frontend**, na área discreta **"Uso desta sessão"** dentro da página Domus AI (chamadas, tokens de entrada, de saída e total).
-- **No servidor**, como um log estruturado por chamada (`event: "domus_ai_usage"`) com modelo, tokens e um identificador de sessão — **sem o conteúdo das mensagens**.
-
-Para gravar uma demonstração:
-
-1. Abra a Domus AI e clique em **"Zerar medição da sessão"** (zera só o contador do navegador — não apaga mensagens nem dados do banco).
-2. Comece a gravação e use o sistema normalmente, fazendo as perguntas planejadas para a Domus AI.
-3. Ao encerrar, copie os totais mostrados em "Uso desta sessão".
-
-Importante: **navegar pelas outras páginas e módulos (Visão Geral, Demandas, Projetos, Financeiro) não consome tokens da OpenAI** — só chamadas reais à Domus AI entram nesse contador. Tokens usados pelo Claude ou pelo Replit Agent durante o desenvolvimento deste software são completamente separados e não aparecem aqui.
-
----
-
-## Quem mantém
-
-| Papel | Nome | Contato |
-|---|---|---|
-| Criador / mantenedor principal | Henrique Wrobel | [@maffiahenrique2006](https://github.com/maffiahenrique2006) |
-| Colaborador | *(adicione seu nome aqui)* | *(GitHub ou e-mail)* |
-
-Abra uma **Issue** no GitHub para bugs ou sugestões. PRs são bem-vindos — descreva o problema que resolve antes de implementar.
-
----
-
-*Domus System · MVP acadêmico · Vértice Espaços · MIT License*
+Participantes: Lara Werner, Clara Queiroz, Arthur Carvalho e Henrique Maffia.

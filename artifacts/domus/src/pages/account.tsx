@@ -10,20 +10,56 @@ export default function AccountPage() {
   const [, navigate] = useLocation()
   const { toast } = useToast()
   const [checkingOut, setCheckingOut] = useState(false)
+  const [billing, setBilling] = useState<{active:boolean; cancelAtPeriodEnd:boolean; status:string; aiDailyLimit:number}|null>(null)
+  const [confirmation, setConfirmation] = useState("")
+  const [cancelling, setCancelling] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams(search)
     const checkout = params.get("checkout")
-    if (checkout === "success") {
-      toast({ title: "Assinatura confirmada", description: "Seu Plano Pro está ativo." })
-      refresh()
-      navigate("/conta", { replace: true })
-    } else if (checkout === "cancelled") {
+    let stopped = false
+    let timer: ReturnType<typeof setTimeout>
+    let attempts = 0
+    async function check() {
+      try {
+        const response = await fetch("/api/billing/status", { credentials: "include" })
+        if (!response.ok) throw new Error("billing")
+        const status = await response.json()
+        if (stopped) return
+        setBilling(status)
+        if (checkout === "success" && status.active) {
+          setConfirmation("Assinatura de teste confirmada pelo servidor. Plano Pro ativo.")
+          await refresh()
+          navigate("/conta", { replace: true })
+        } else if (checkout === "success") {
+          setConfirmation(attempts < 14 ? "Aguardando o webhook do Stripe confirmar sua assinatura…" : "A confirmação ainda não chegou. Atualize esta página em instantes; não faça outro pagamento.")
+          if (attempts++ < 14) timer = setTimeout(check, 2000)
+        }
+      } catch {
+        if (!stopped) setConfirmation("Não foi possível consultar a confirmação. Atualize a página para tentar novamente.")
+      }
+    }
+    void check()
+    if (checkout === "cancelled") {
       toast({ title: "Checkout cancelado", description: "Nenhuma cobrança foi feita." })
       navigate("/conta", { replace: true })
     }
+    return () => { stopped = true; clearTimeout(timer) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
+
+  async function cancelSubscription() {
+    if (!window.confirm("Solicitar cancelamento do Plano Pro de teste ao fim do período?")) return
+    setCancelling(true)
+    try {
+      const response = await fetch("/api/billing/cancel", { method: "POST", credentials: "include" })
+      const body = await response.json()
+      if (!response.ok) throw new Error(body.error)
+      setConfirmation(body.message)
+    } catch (error) {
+      toast({ title: "Cancelamento não confirmado", description: error instanceof Error ? error.message : "Tente novamente.", variant: "destructive" })
+    } finally { setCancelling(false) }
+  }
 
   async function handleSubscribe() {
     setCheckingOut(true)
@@ -52,7 +88,7 @@ export default function AccountPage() {
 
   if (!user) return null
 
-  const isPro = user.plan === "pro"
+  const isPro = billing?.active ?? user.plan === "pro"
 
   return (
     <div className="h-full overflow-y-auto px-4 md:px-8 py-6">
@@ -79,6 +115,7 @@ export default function AccountPage() {
         </div>
 
         <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+          {confirmation && <p role="status" className="text-sm rounded-lg border border-border p-3">{confirmation}</p>}
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
@@ -98,12 +135,15 @@ export default function AccountPage() {
           {isPro ? (
             <div className="flex items-start gap-2 text-sm text-muted-foreground">
               <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-              <p>Sua assinatura do Plano Pro está ativa (modo de teste do Stripe).</p>
+              <div className="space-y-3"><p>Sua assinatura do Plano Pro está ativa (modo de teste do Stripe).</p>
+              <p>{billing?.cancelAtPeriodEnd ? "Cancelamento confirmado para o fim do período." : "Até 100 pedidos à IA por dia, incluindo a configuração do escritório."}</p>
+              {!billing?.cancelAtPeriodEnd && <button onClick={cancelSubscription} disabled={cancelling} className="text-xs underline">{cancelling ? "Solicitando…" : "Cancelar ao fim do período"}</button>}
+              </div>
             </div>
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
-                Assine o Plano Pro para desbloquear a demonstração completa. Checkout real do Stripe,
+                O Free inclui a gestão do escritório e até 10 pedidos à IA por dia. O Pro de teste amplia para 100 pedidos por dia. Checkout real do Stripe,
                 em modo de teste — nenhuma cobrança real é feita.
               </p>
               <button
