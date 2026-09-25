@@ -2,8 +2,7 @@ import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import authRouter from "./auth";
 import chatRouter from "./chat";
-import demandsRouter from "./demands";
-import financialRouter from "./financial";
+import workspaceRouter, {handleWorkspaceError} from "./workspace";
 import billingRouter from "./billing";
 import { requireAuth } from "../lib/auth";
 
@@ -15,8 +14,8 @@ router.use(authRouter);
 
 // Everything else requires a signed-in user.
 router.use(requireAuth, chatRouter);
-router.use(requireAuth, demandsRouter);
-router.use(requireAuth, financialRouter);
+router.use(requireAuth, workspaceRouter);
 router.use(requireAuth, billingRouter);
+router.use(handleWorkspaceError);
 
 export default router;

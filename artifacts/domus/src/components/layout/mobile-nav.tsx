@@ -1,13 +1,15 @@
 import { Link, useLocation } from "wouter"
-import { LayoutDashboard, Inbox, FolderOpen, Wallet, Sparkles } from "lucide-react"
+import { LayoutDashboard, Inbox, FolderOpen, Wallet, Sparkles, Users, UserCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const NAV_ITEMS = [
   { title: "Geral", href: "/", icon: LayoutDashboard },
+  { title: "Clientes", href: "/clientes", icon: Users },
   { title: "Demandas", href: "/demandas", icon: Inbox },
-  { title: "Projetos", href: "/projetos", icon: FolderOpen },
+  { title: "Casos", href: "/projetos", icon: FolderOpen },
   { title: "Financeiro", href: "/financeiro", icon: Wallet },
   { title: "AI", href: "/domus-ai", icon: Sparkles },
+  { title: "Conta", href: "/conta", icon: UserCircle },
 ]
 
 export function MobileNav() {
@@ -17,7 +19,7 @@ export function MobileNav() {
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-border bg-sidebar/95 backdrop-blur md:hidden">
-      <div className="grid grid-cols-5">
+      <div className="flex overflow-x-auto">
         {NAV_ITEMS.map((item) => {
           const active = isActive(item.href)
           const isAI = item.href === "/domus-ai"
@@ -26,7 +28,7 @@ export function MobileNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center gap-1 px-2 py-3 text-[10px] font-medium transition-colors",
+                "flex flex-1 min-w-[58px] flex-col items-center gap-1 px-2 py-3 text-[10px] font-medium transition-colors",
                 active ? "text-primary" : "text-muted-foreground"
               )}
             >

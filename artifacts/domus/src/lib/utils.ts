@@ -13,7 +13,12 @@ export function formatCurrency(amount: number) {
 }
 
 export function formatDate(dateStr: string) {
-  const date = new Date(dateStr)
+  // "AAAA-MM-DD" é uma data de calendário, sem fuso: montar como data local
+  // evita que "2026-10-10" apareça como 09/10 no horário do Brasil.
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr)
+  const date = match
+    ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+    : new Date(dateStr)
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "2-digit",

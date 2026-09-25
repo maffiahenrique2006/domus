@@ -25,7 +25,7 @@ function getRedirectUri(): string {
 function getClient(): OAuth2Client {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  if (!clientId || !clientSecret) {
+  if (!clientId || !clientSecret || !process.env.SESSION_SECRET) {
     throw new MissingGoogleConfigError();
   }
   return new OAuth2Client(clientId, clientSecret, getRedirectUri());
@@ -55,7 +55,7 @@ export async function exchangeGoogleCode(code: string): Promise<GoogleProfile> {
   });
 
   const payload = ticket.getPayload();
-  if (!payload?.sub || !payload.email) {
+  if (!payload?.sub || !payload.email || !payload.email_verified) {
     throw new Error("Google id_token payload is missing required fields");
   }
 

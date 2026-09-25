@@ -10,17 +10,20 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
+import { useWorkspace } from "@/data/store"
 
 const NAV_ITEMS = [
   { title: "Visão Geral", href: "/", icon: LayoutDashboard },
   { title: "Demandas", href: "/demandas", icon: Inbox },
-  { title: "Projetos", href: "/projetos", icon: FolderOpen },
+  { title: "Casos e serviços", href: "/projetos", icon: FolderOpen },
+  { title: "Clientes", href: "/clientes", icon: Inbox },
   { title: "Financeiro", href: "/financeiro", icon: Wallet },
 ]
 
 export function Sidebar() {
   const [location] = useLocation()
   const { user, logout } = useAuth()
+  const { state } = useWorkspace()
 
   const isActive = (href: string) =>
     href === "/" ? location === "/" : location.startsWith(href)
@@ -36,7 +39,7 @@ export function Sidebar() {
         </div>
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground leading-tight truncate">
-            Vértice Espaços
+            {state.company.name || "Seu escritório"}
           </p>
           <p className="text-[10px] text-muted-foreground font-mono leading-tight mt-0.5">
             Domus System
@@ -100,7 +103,7 @@ export function Sidebar() {
                 ? "bg-primary/10 text-primary border-primary/20"
                 : "bg-secondary text-muted-foreground border-border"
             )}>
-              DEMO
+              IA
             </span>
           </Link>
         </div>
@@ -141,7 +144,7 @@ export function Sidebar() {
         </Link>
 
         <p className="px-2 text-[10px] text-muted-foreground leading-relaxed font-mono">
-          Domus System configurado para a operação da Vértice Espaços.
+          Domus para escritórios de advocacia.
         </p>
       </div>
     </aside>

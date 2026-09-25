@@ -33,7 +33,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
-    await fetch("/api/auth/logout", { method: "POST", credentials: "include" })
+    const response = await fetch("/api/auth/logout", { method: "POST", credentials: "include" })
+    if (!response.ok) throw new Error("Não foi possível encerrar a sessão. Tente novamente.")
     setUser(null)
   }
 

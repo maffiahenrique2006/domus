@@ -38,12 +38,13 @@ export function setSessionCookie(res: Response, token: string, expiresAt: Date):
 }
 
 export function clearSessionCookie(res: Response): void {
-  res.clearCookie(SESSION_COOKIE);
+  res.clearCookie(SESSION_COOKIE, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/" });
 }
 
 export function getSessionToken(req: Request): string | undefined {
   const signedCookies = req.signedCookies as Record<string, string> | undefined;
-  return signedCookies?.[SESSION_COOKIE];
+  const token = signedCookies?.[SESSION_COOKIE];
+  return typeof token === "string" && /^[a-f0-9]{64}$/.test(token) ? token : undefined;
 }
 
 async function loadUserFromSession(token: string): Promise<User | undefined> {

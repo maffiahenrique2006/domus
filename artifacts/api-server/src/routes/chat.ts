@@ -1,113 +1,33 @@
-import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
-import { db, chatMessagesTable } from "@workspace/db";
-import {
-  SendChatMessageBody,
-  DeleteChatMessageParams,
-  GetChatMessagesResponse,
-  SendChatMessageResponse,
-  DeleteChatMessageResponse,
-  ClearChatResponse,
-} from "@workspace/api-zod";
-import { askDomusAi } from "../lib/domus-ai";
-import { logAiUsage } from "../lib/ai-usage-log";
-import { logger } from "../lib/logger";
-import { rateLimit } from "../middlewares/rate-limit";
-import {
-  AiRateLimitedError,
-  AiUnavailableError,
-  MissingApiKeyError,
-  MissingModelError,
-} from "../lib/domus-ai-errors";
-
-const router: IRouter = Router();
-
-router.get("/chat/messages", async (req, res): Promise<void> => {
-  const messages = await db
-    .select()
-    .from(chatMessagesTable)
-    .orderBy(chatMessagesTable.createdAt);
-
-  res.json(GetChatMessagesResponse.parse(messages));
+import { Router } from 'express';
+import { z } from 'zod/v4';
+import { pool } from '@workspace/db';
+import { ensureCompany,readWorkspace,recordUsage,reserveAiQuota,transaction } from '../lib/workspace';
+import { askDomusAi } from '../lib/domus-ai';
+import { rateLimit } from '../middlewares/rate-limit';
+const router=Router();
+router.get('/chat/messages',async(req,res)=>{
+ const id=await ensureCompany(req.user!.id);
+ const r=await pool.query('SELECT id,role,content,created_at AS "createdAt" FROM legal_chat_messages WHERE company_id=$1 AND user_id=$2 ORDER BY id',[id,req.user!.id]);res.json(r.rows);
 });
-
-router.post(
-  "/chat/messages",
-  rateLimit({ windowMs: 60_000, max: 12 }),
-  async (req, res): Promise<void> => {
-    const parsed = SendChatMessageBody.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: "Mensagem inválida." });
-      return;
-    }
-
-    const sessionId = parsed.data.sessionId ?? "unknown";
-
-    // Save user message
-    await db.insert(chatMessagesTable).values({
-      role: "user",
-      content: parsed.data.content,
-    });
-
-    let aiResult;
-    try {
-      aiResult = await askDomusAi(parsed.data.content);
-    } catch (err) {
-      if (err instanceof MissingApiKeyError || err instanceof MissingModelError) {
-        logger.error({ event: "domus_ai_config_error" }, "Domus AI not configured");
-        res.status(503).json({
-          error:
-            "A Domus AI ainda não está configurada neste ambiente. Peça ao responsável para configurar a chave da OpenAI nos Secrets.",
-        });
-        return;
-      }
-      if (err instanceof AiRateLimitedError) {
-        res.status(429).json({
-          error: "A Domus AI está recebendo muitas solicitações agora. Tente novamente em instantes.",
-        });
-        return;
-      }
-      if (err instanceof AiUnavailableError) {
-        logger.error({ event: "domus_ai_call_failed" }, "Domus AI call failed");
-        res.status(502).json({
-          error: "Não foi possível obter uma resposta da Domus AI agora. Tente novamente em instantes.",
-        });
-        return;
-      }
-      throw err;
-    }
-
-    logAiUsage(sessionId, aiResult.usage);
-
-    const [aiMsg] = await db
-      .insert(chatMessagesTable)
-      .values({ role: "assistant", content: aiResult.text })
-      .returning();
-
-    res.json(
-      SendChatMessageResponse.parse({
-        message: aiMsg,
-        usage: aiResult.usage,
-      }),
-    );
-  },
-);
-
-router.delete("/chat/messages/:id", async (req, res): Promise<void> => {
-  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const params = DeleteChatMessageParams.safeParse({ id: Number(raw) });
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-
-  await db.delete(chatMessagesTable).where(eq(chatMessagesTable.id, params.data.id));
-  res.json(DeleteChatMessageResponse.parse({ success: true }));
+router.post('/chat/messages',rateLimit({windowMs:60000,max:12}),async(req,res)=>{
+ const content=z.string().trim().min(1).max(4000).parse(req.body.content);const userId=req.user!.id;const companyId=await ensureCompany(userId);
+ const workspace=await readWorkspace(companyId);
+ const previous=await pool.query('SELECT role,content FROM legal_chat_messages WHERE company_id=$1 AND user_id=$2 ORDER BY id DESC LIMIT 8',[companyId,userId]);
+ await reserveAiQuota(companyId,req.user!.plan);
+ const total=(type:string,status?:string)=>workspace.financialEntries.filter(f=>f.type===type&&(!status||f.status===status)).reduce((sum,f)=>sum+Math.round(f.amount*100),0)/100;
+ const context={today:new Date().toISOString().slice(0,10),company:workspace.company,
+  totals:{demands:workspace.demands.length,projects:workspace.projects.length,financialEntries:workspace.financialEntries.length,receivable:total('receber'),received:total('receber','recebido'),payable:total('pagar'),paid:total('pagar','pago')},
+  demands:workspace.demands.slice(0,20).map(d=>({id:d.id,title:d.title,status:d.status,priority:d.priority,dueDate:d.dueDate,responsible:d.responsible})),
+  projects:workspace.projects.slice(0,20).map(p=>({id:p.id,name:p.name,phase:p.phase,progress:p.progress,dueDate:p.dueDate,health:p.health,taskCount:p.tasks.length,tasks:p.tasks.filter((t:any)=>!t.done).slice(0,5).map((t:any)=>({id:t.id,title:t.title.slice(0,100),dueDate:t.dueDate}))})),
+  financialEntries:workspace.financialEntries.slice(0,20).map(f=>({id:f.id,projectId:f.projectId,type:f.type,amount:f.amount,status:f.status,dueDate:f.dueDate})),
+  scope:'Totais cobrem todos os registros; detalhes limitados aos primeiros 20 por módulo e até 5 tarefas pendentes por caso. Se faltarem detalhes, informe a limitação. Sem consulta jurídica externa.'};
+ const ai=await askDomusAi(content,context,previous.rows.reverse().map(m=>({...m,content:m.content.slice(0,1000)})),usage=>recordUsage(companyId,userId,'chat',usage));
+ const message=await transaction(async db=>{
+  await db.query('INSERT INTO legal_chat_messages(company_id,user_id,role,content) VALUES($1,$2,$3,$4)',[companyId,userId,'user',content]);
+  const r=await db.query('INSERT INTO legal_chat_messages(company_id,user_id,role,content) VALUES($1,$2,$3,$4) RETURNING id,role,content,created_at AS "createdAt"',[companyId,userId,'assistant',ai.text]);return r.rows[0];
+ });res.json({message,usage:ai.usage});
 });
-
-router.post("/chat/clear", async (_req, res): Promise<void> => {
-  await db.delete(chatMessagesTable);
-  res.json(ClearChatResponse.parse({ success: true }));
-});
-
+router.delete('/chat/messages/:id',async(req,res)=>{const id=await ensureCompany(req.user!.id);const messageId=z.coerce.number().int().positive().parse(req.params.id);
+ await pool.query('DELETE FROM legal_chat_messages WHERE company_id=$1 AND user_id=$2 AND id=$3',[id,req.user!.id,messageId]);res.json({success:true});});
+router.post('/chat/clear',async(req,res)=>{const id=await ensureCompany(req.user!.id);await pool.query('DELETE FROM legal_chat_messages WHERE company_id=$1 AND user_id=$2',[id,req.user!.id]);res.json({success:true});});
 export default router;
