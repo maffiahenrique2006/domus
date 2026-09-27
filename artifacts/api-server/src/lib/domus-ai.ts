@@ -12,13 +12,17 @@ export async function generateAi(system:string,input:string,schema?:Record<strin
  const client=getOpenAIClient();
  let response;
  try{response=await client.responses.create({model,input:[{role:'system',content:system},{role:'user',content:input}],max_output_tokens:schema?2200:700,store:false,
- ...(schema?{text:{format:{type:'json_schema' as const,name:'domus_interview',strict:true,schema}}}:{})});}
+ ...(schema?{text:{format:{type:'json_schema' as const,name:'domus_structured',strict:true,schema}}}:{})});}
  catch(error){if(error instanceof OpenAI.RateLimitError)throw new AiRateLimitedError();throw new AiUnavailableError(error);}
  const usage=response.usage;const text=response.output_text?.trim();
  const recordedUsage=usage?{model:response.model??model,responseId:response.id,inputTokens:usage.input_tokens,outputTokens:usage.output_tokens,totalTokens:usage.total_tokens}:null;
  if(recordedUsage&&onUsage)await onUsage(recordedUsage);
  if(!text||response.status==='incomplete'||!usage)throw new AiUnavailableError(new Error('Missing or incomplete AI response'));
  return {text,usage:recordedUsage!};
+}
+/** Chat com cadastro por conversa: devolve JSON com reply e propostas (ver chat-proposals.ts). */
+export async function askDomusAiWithProposals(message:string,context:unknown,history:unknown,rules:string,schema:Record<string,unknown>,onUsage?:(usage:DomusAiResult['usage'])=>Promise<void>){
+ return generateAi(MANAGEMENT_RULES+' O contexto é uma fotografia do banco; não representa conexão com tribunais.'+rules,JSON.stringify({context,history,message}),schema,onUsage);
 }
 export async function askDomusAi(message:string,context:unknown,history:unknown=[],onUsage?:(usage:DomusAiResult['usage'])=>Promise<void>){
  return generateAi(MANAGEMENT_RULES+' Responda em até 6 frases. O contexto é uma fotografia do banco; não representa conexão com tribunais.',JSON.stringify({context,history,message}),undefined,onUsage);

@@ -6,7 +6,7 @@ A Domus transforma a descrição da operação de um escritório em uma configur
 
 Login Google → entrevista → revisão da configuração → clientes → demandas → casos e tarefas → financeiro → análise com IA → assinatura Stripe de teste.
 
-A IA configura etapas e campos suportados. **Não gera um software arbitrário**, não altera o banco livremente, não calcula prazos processuais, não pesquisa processos nem presta consultoria jurídica. Use apenas informações fictícias na demonstração.
+A IA configura etapas e campos suportados e, no chat, **propõe** o cadastro de clientes e demandas: o gestor confirma cada proposta e o servidor valida e grava pela mesma rota das telas. A IA nunca grava sozinha. **Não gera um software arbitrário**, não altera o banco livremente, não calcula prazos processuais, não pesquisa processos nem presta consultoria jurídica. Use apenas informações fictícias na demonstração.
 
 Os dados operacionais são persistidos em PostgreSQL e separados por escritório no servidor. Não há preenchimento automático com os antigos dados de arquitetura. Os antigos registros e relatórios são preservados como histórico, não como prova da versão atual.
 

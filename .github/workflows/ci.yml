@@ -20,7 +20,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run typecheck
       - run: node lib/db/tests/workspace.test.mjs
-      - run: node --test artifacts/api-server/tests/billing*.test.mjs
+      - run: node --test artifacts/api-server/tests/*.test.mjs
       - run: pnpm --filter @workspace/domus run build
         env:
           PORT: 5000

@@ -1,13 +1,51 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Sparkles, Triangle, Plus, RotateCcw } from "lucide-react";
+import {
+  Send,
+  Sparkles,
+  Triangle,
+  Plus,
+  RotateCcw,
+  Check,
+  X,
+} from "lucide-react";
 import { useLocation } from "wouter";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { api, useWorkspace } from "@/data/store";
+import type { Workspace } from "@/data/types";
 import { PersistedUsage } from "@/components/persisted-usage";
 
 // ── Types ──────────────────────────────────────
 
 type Role = "user" | "ai";
+
+// Cadastro por conversa: a IA propõe, o gestor confirma, o servidor valida e grava.
+type ProposalStatus = "pendente" | "salvando" | "confirmada" | "erro";
+
+interface ClientProposal {
+  kind: "client";
+  name: string;
+  email: string;
+}
+
+interface DemandProposal {
+  kind: "demand";
+  title: string;
+  client: string;
+  service: string;
+  responsible: string;
+  priority: "urgente" | "alta" | "media" | "baixa";
+  dueDate: string;
+  estimatedValue: number;
+  description: string;
+  customValues: Record<string, string | number>;
+  missing: string[];
+}
+
+type Proposal = (ClientProposal | DemandProposal) & {
+  key: string;
+  status: ProposalStatus;
+  error?: string;
+};
 
 interface Message {
   id: string;
@@ -15,6 +53,7 @@ interface Message {
   text: string;
   timestamp: string;
   actions?: { label: string; href: string }[];
+  proposals?: Proposal[];
 }
 
 interface SessionUsage {
@@ -40,7 +79,7 @@ function now(offsetMin = 0) {
 const WELCOME_MESSAGE: Message = {
   id: "welcome",
   role: "ai",
-  text: "Olá! Sou a Domus AI. Posso consultar um resumo dos seus casos, demandas e financeiro para ajudar a organizar o escritório. Não substituo a análise jurídica nem calculo prazos processuais. O que você quer organizar?",
+  text: "Olá! Sou a Domus AI. Posso consultar um resumo dos seus casos, demandas e financeiro, e também preparar o cadastro de clientes e demandas: você descreve, eu proponho, e nada é salvo sem a sua confirmação. Não substituo a análise jurídica nem calculo prazos processuais. O que você quer organizar?",
   timestamp: now(),
 };
 
@@ -146,6 +185,115 @@ function MessageBubble({
   );
 }
 
+// ── Proposal cards ────────────────────────────
+
+const PRIORITY_LABEL: Record<DemandProposal["priority"], string> = {
+  urgente: "Urgente",
+  alta: "Alta",
+  media: "Média",
+  baixa: "Baixa",
+};
+
+function ProposalCard({
+  proposal,
+  fieldLabels,
+  disabled,
+  onConfirm,
+  onDiscard,
+}: {
+  proposal: Proposal;
+  fieldLabels: Record<string, string>;
+  disabled: boolean;
+  onConfirm: () => void;
+  onDiscard: () => void;
+}) {
+  const isClient = proposal.kind === "client";
+  const details: [string, string][] = isClient
+    ? [["E-mail", proposal.email]]
+    : [
+        ["Cliente", proposal.client],
+        ["Serviço", proposal.service],
+        ["Responsável", proposal.responsible],
+        ["Prioridade", PRIORITY_LABEL[proposal.priority]],
+        ["Prazo", proposal.dueDate ? formatDate(proposal.dueDate) : ""],
+        [
+          "Honorários estimados",
+          proposal.estimatedValue ? formatCurrency(proposal.estimatedValue) : "",
+        ],
+        ...Object.entries(proposal.customValues).map(
+          ([id, value]) => [fieldLabels[id] ?? id, String(value)] as [string, string],
+        ),
+      ];
+  const missing = isClient ? [] : proposal.missing;
+  const confirmed = proposal.status === "confirmada";
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border bg-card px-4 py-3 text-sm",
+        confirmed ? "border-primary/40" : "border-border",
+      )}
+    >
+      <p className="text-[11px] font-medium uppercase tracking-wide text-primary">
+        {isClient ? "Proposta de cliente" : "Proposta de demanda"}
+      </p>
+      <p className="mt-0.5 font-semibold text-foreground">
+        {isClient ? proposal.name : proposal.title}
+      </p>
+      <dl className="mt-2 grid gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
+        {details
+          .filter(([, value]) => value)
+          .map(([label, value]) => (
+            <div key={label} className="flex gap-1.5">
+              <dt className="text-muted-foreground">{label}:</dt>
+              <dd className="text-foreground">{value}</dd>
+            </div>
+          ))}
+      </dl>
+      {missing.length > 0 && !confirmed && (
+        <p className="mt-2 text-xs text-destructive">
+          Falta informar: {missing.join(", ")}. Diga no chat ou cadastre pela
+          tela de Demandas.
+        </p>
+      )}
+      {proposal.status === "erro" && (
+        <p className="mt-2 text-xs text-destructive" role="alert">
+          {proposal.error}
+        </p>
+      )}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {confirmed ? (
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+            <Check className="h-3.5 w-3.5" />
+            Salvo no escritório
+          </span>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={disabled || missing.length > 0}
+              className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Check className="h-3.5 w-3.5" />
+              {proposal.status === "salvando" ? "Salvando…" : "Confirmar cadastro"}
+            </button>
+            <button
+              type="button"
+              onClick={onDiscard}
+              disabled={disabled}
+              className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+            >
+              <X className="h-3.5 w-3.5" />
+              Descartar
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Typing indicator ──────────────────────────
 
 function TypingIndicator() {
@@ -201,7 +349,16 @@ function SessionUsagePanel({
 // ── Page ─────────────────────────────────────
 
 export default function DomusAIPage() {
-  const { state } = useWorkspace();
+  const { state, replace } = useWorkspace();
+  // Espelhos do estado mais recente, para confirmar várias propostas em sequência.
+  const revisionRef = useRef(state.revision);
+  const clientsRef = useRef(state.clients);
+  revisionRef.current = state.revision;
+  clientsRef.current = state.clients;
+  const [saving, setSaving] = useState(false);
+  const fieldLabels = Object.fromEntries(
+    (state.configuration?.fields ?? []).map((f) => [f.id, f.label]),
+  );
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
@@ -241,6 +398,104 @@ export default function DomusAIPage() {
 
   function resetUsage() {
     setUsage(ZERO_USAGE);
+  }
+
+  function patchProposal(
+    messageId: string,
+    key: string,
+    patch: Partial<Proposal> | null,
+  ) {
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id !== messageId
+          ? m
+          : {
+              ...m,
+              proposals: (m.proposals ?? []).flatMap((p) =>
+                p.key !== key ? [p] : patch ? [{ ...p, ...patch } as Proposal] : [],
+              ),
+            },
+      ),
+    );
+  }
+
+  // Grava pela mesma rota dos formulários: o servidor valida tudo de novo.
+  async function saveProposal(p: Proposal) {
+    const same = (a: string, b: string) =>
+      a.trim().toLowerCase() === b.trim().toLowerCase();
+    let action: { type: string; payload: unknown };
+    if (p.kind === "client") {
+      action = {
+        type: "CREATE_CLIENT",
+        payload: {
+          id: crypto.randomUUID(),
+          name: p.name,
+          email: p.email,
+          phone: "",
+        },
+      };
+    } else {
+      const existing = clientsRef.current.find((c) => same(c.name, p.client));
+      action = {
+        type: "CREATE_DEMAND",
+        payload: {
+          id: crypto.randomUUID(),
+          title: p.title,
+          client: existing?.name ?? p.client,
+          ...(existing ? { clientId: existing.id } : {}),
+          ...(p.service ? { service: p.service } : {}),
+          responsible: p.responsible || null,
+          priority: p.priority,
+          status: "nova",
+          dueDate: p.dueDate,
+          estimatedValue: p.estimatedValue,
+          description: p.description,
+          origin: "Domus AI",
+          createdAt: new Date().toISOString(),
+          comments: [],
+          history: [],
+          files: [],
+          customValues: p.customValues,
+        },
+      };
+    }
+    const workspace = await api<Workspace>("/api/workspace/actions", {
+      ...action,
+      revision: revisionRef.current,
+    });
+    revisionRef.current = workspace.revision;
+    clientsRef.current = workspace.clients;
+    replace(workspace);
+  }
+
+  async function confirmProposals(messageId: string, list: Proposal[]) {
+    if (saving) return;
+    setSaving(true);
+    try {
+      for (const p of list) {
+        patchProposal(messageId, p.key, { status: "salvando", error: undefined });
+        try {
+          await saveProposal(p);
+          patchProposal(messageId, p.key, { status: "confirmada" });
+        } catch (e) {
+          patchProposal(messageId, p.key, {
+            status: "erro",
+            error: e instanceof Error ? e.message : "Não foi possível salvar.",
+          });
+          // Depois de um erro, busca a revisão atual antes de tentar a próxima.
+          try {
+            const fresh = await api<Workspace>("/api/workspace");
+            revisionRef.current = fresh.revision;
+            clientsRef.current = fresh.clients;
+            replace(fresh);
+          } catch {
+            break;
+          }
+        }
+      }
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function sendMessage(text: string) {
@@ -283,6 +538,13 @@ export default function DomusAIPage() {
         role: "ai",
         text: body.message.content,
         timestamp: now(),
+        proposals: Array.isArray(body.proposals)
+          ? body.proposals.map((p: ClientProposal | DemandProposal, i: number) => ({
+              ...p,
+              key: `${Date.now()}-${i}`,
+              status: "pendente" as ProposalStatus,
+            }))
+          : [],
       };
       setMessages((prev) => [...prev, aiMsg]);
 
@@ -351,9 +613,44 @@ export default function DomusAIPage() {
           </div>
         </div>
 
-        {messages.map((msg) => (
-          <MessageBubble key={msg.id} msg={msg} onAction={navigate} />
-        ))}
+        {messages.map((msg) => {
+          const proposals = msg.proposals ?? [];
+          const ready = proposals.filter(
+            (p) =>
+              p.status !== "confirmada" &&
+              (p.kind === "client" || p.missing.length === 0),
+          );
+          return (
+            <div key={msg.id} className="space-y-3">
+              <MessageBubble msg={msg} onAction={navigate} />
+              {proposals.length > 0 && (
+                <div className="ml-11 max-w-[88%] space-y-2">
+                  {proposals.map((p) => (
+                    <ProposalCard
+                      key={p.key}
+                      proposal={p}
+                      fieldLabels={fieldLabels}
+                      disabled={saving}
+                      onConfirm={() => void confirmProposals(msg.id, [p])}
+                      onDiscard={() => patchProposal(msg.id, p.key, null)}
+                    />
+                  ))}
+                  {ready.length > 1 && (
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => void confirmProposals(msg.id, ready)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-primary/40 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      Confirmar os {ready.length} cadastros
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {typing && <TypingIndicator />}
         <div ref={bottomRef} />
@@ -394,7 +691,7 @@ export default function DomusAIPage() {
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Pergunte sobre casos, demandas, financeiro…"
+              placeholder="Pergunte ou peça um cadastro: clientes, demandas…"
               className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
               disabled={typing || historyLoading}
               aria-label="Pergunta à Domus AI"
@@ -422,8 +719,8 @@ export default function DomusAIPage() {
           </button>
         </form>
         <p className="text-[10px] text-muted-foreground text-center mt-2">
-          Perguntas e a entrevista de configuração usam tokens da OpenAI.
-          Consultar e editar os registros de gestão não usa IA.
+          Perguntas e a entrevista de configuração usam tokens da OpenAI. A
+          Domus AI só propõe cadastros: nada é salvo sem a sua confirmação.
         </p>
       </div>
     </div>
