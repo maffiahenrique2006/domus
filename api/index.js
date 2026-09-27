@@ -5450,8 +5450,8 @@ var require_raw_body = __commonJS({
             type: "request.size.invalid"
           }));
         } else {
-          var string5 = decoder ? buffer + (decoder.end() || "") : Buffer.concat(buffer);
-          done(null, string5);
+          var string6 = decoder ? buffer + (decoder.end() || "") : Buffer.concat(buffer);
+          done(null, string6);
         }
       }
       function cleanup() {
@@ -15310,26 +15310,26 @@ var require_media_typer = __commonJS({
       if (!subtype || !SUBTYPE_NAME_REGEXP.test(subtype)) {
         throw new TypeError("invalid subtype");
       }
-      var string5 = type + "/" + subtype;
+      var string6 = type + "/" + subtype;
       if (suffix) {
         if (!TYPE_NAME_REGEXP.test(suffix)) {
           throw new TypeError("invalid suffix");
         }
-        string5 += "+" + suffix;
+        string6 += "+" + suffix;
       }
-      return string5;
+      return string6;
     }
-    function test(string5) {
-      if (typeof string5 !== "string") {
+    function test(string6) {
+      if (typeof string6 !== "string") {
         throw new TypeError("argument string is required to be a string");
       }
-      return TYPE_REGEXP.test(string5.toLowerCase());
+      return TYPE_REGEXP.test(string6.toLowerCase());
     }
-    function parse3(string5) {
-      if (typeof string5 !== "string") {
+    function parse3(string6) {
+      if (typeof string6 !== "string") {
         throw new TypeError("argument string is required to be a string");
       }
-      var match = TYPE_REGEXP.exec(string5.toLowerCase());
+      var match = TYPE_REGEXP.exec(string6.toLowerCase());
       if (!match) {
         throw new TypeError("invalid media type");
       }
@@ -16037,7 +16037,7 @@ var require_object_inspect = __commonJS({
       if (typeof globalThis !== "undefined" && obj === globalThis || typeof global !== "undefined" && obj === global) {
         return "{ [object globalThis] }";
       }
-      if (!isDate(obj) && !isRegExp(obj)) {
+      if (!isDate2(obj) && !isRegExp(obj)) {
         var ys = arrObjKeys(obj, inspect);
         var isPlainObject2 = gPO ? gPO(obj) === Object.prototype : obj instanceof Object || obj.constructor === Object;
         var protoTag = obj instanceof Object ? "" : "null prototype";
@@ -16068,7 +16068,7 @@ var require_object_inspect = __commonJS({
     function isArray2(obj) {
       return toStr(obj) === "[object Array]" && canTrustToString(obj);
     }
-    function isDate(obj) {
+    function isDate2(obj) {
       return toStr(obj) === "[object Date]" && canTrustToString(obj);
     }
     function isRegExp(obj) {
@@ -17123,16 +17123,16 @@ var require_get_intrinsic = __commonJS({
     var $exec = bind.call($call, RegExp.prototype.exec);
     var rePropName = /[^%.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(?:\.|\[\])(?:\.|\[\]|%$))/g;
     var reEscapeChar = /\\(\\)?/g;
-    var stringToPath = function stringToPath2(string5) {
-      var first = $strSlice(string5, 0, 1);
-      var last = $strSlice(string5, -1);
+    var stringToPath = function stringToPath2(string6) {
+      var first = $strSlice(string6, 0, 1);
+      var last = $strSlice(string6, -1);
       if (first === "%" && last !== "%") {
         throw new $SyntaxError("invalid intrinsic syntax, expected closing `%`");
       } else if (last === "%" && first !== "%") {
         throw new $SyntaxError("invalid intrinsic syntax, expected opening `%`");
       }
       var result = [];
-      $replace(string5, rePropName, function(match, number4, quote, subString) {
+      $replace(string6, rePropName, function(match, number4, quote, subString) {
         result[result.length] = quote ? $replace(subString, reEscapeChar, "$1") : number4 || match;
       });
       return result;
@@ -17622,21 +17622,21 @@ var require_utils2 = __commonJS({
       if (str.length === 0) {
         return str;
       }
-      var string5 = str;
+      var string6 = str;
       if (typeof str === "symbol") {
-        string5 = Symbol.prototype.toString.call(str);
+        string6 = Symbol.prototype.toString.call(str);
       } else if (typeof str !== "string") {
-        string5 = String(str);
+        string6 = String(str);
       }
       if (charset === "iso-8859-1") {
-        return escape(string5).replace(/%u[0-9a-f]{4}/gi, function($0) {
+        return escape(string6).replace(/%u[0-9a-f]{4}/gi, function($0) {
           return "%26%23" + parseInt($0.slice(2), 16) + "%3B";
         });
       }
       var out = "";
-      for (var j = 0; j < string5.length; j += limit2) {
-        var segment = string5.length >= limit2 ? string5.slice(j, j + limit2) : string5;
-        if (j + limit2 < string5.length) {
+      for (var j = 0; j < string6.length; j += limit2) {
+        var segment = string6.length >= limit2 ? string6.slice(j, j + limit2) : string6;
+        if (j + limit2 < string6.length) {
           var last = segment.charCodeAt(segment.length - 1);
           if (last >= 55296 && last <= 56319) {
             segment = segment.slice(0, -1);
@@ -17804,8 +17804,8 @@ var require_stringify = __commonJS({
       return typeof v === "string" || typeof v === "number" || typeof v === "boolean" || typeof v === "symbol" || typeof v === "bigint";
     };
     var sentinel2 = {};
-    var stringify2 = function stringify3(object3, prefix, generateArrayPrefix, commaRoundTrip, allowEmptyArrays, strictNullHandling, skipNulls, encodeDotInKeys, encoder, filter, sort, allowDots, serializeDate, format, formatter, encodeValuesOnly, charset, sideChannel, depth, currentDepth) {
-      var obj = object3;
+    var stringify2 = function stringify3(object4, prefix, generateArrayPrefix, commaRoundTrip, allowEmptyArrays, strictNullHandling, skipNulls, encodeDotInKeys, encoder, filter, sort, allowDots, serializeDate, format, formatter, encodeValuesOnly, charset, sideChannel, depth, currentDepth) {
+      var obj = object4;
       if (currentDepth > depth) {
         throw new RangeError("Input depth exceeded depth option of " + depth);
       }
@@ -17813,7 +17813,7 @@ var require_stringify = __commonJS({
       var step = 0;
       var findFlag = false;
       while ((tmpSc = tmpSc.get(sentinel2)) !== void 0 && !findFlag) {
-        var pos = tmpSc.get(object3);
+        var pos = tmpSc.get(object4);
         step += 1;
         if (typeof pos !== "undefined") {
           if (pos === step) {
@@ -17881,7 +17881,7 @@ var require_stringify = __commonJS({
         }
         var encodedKey = allowDots && encodeDotInKeys ? String(key).replace(/\./g, "%2E") : String(key);
         var keyPrefix = isArray2(obj) ? typeof generateArrayPrefix === "function" ? generateArrayPrefix(adjustedPrefix, encodedKey) : adjustedPrefix : adjustedPrefix + (allowDots ? "." + encodedKey : "[" + encodedKey + "]");
-        sideChannel.set(object3, step);
+        sideChannel.set(object4, step);
         var valueSideChannel = getSideChannel();
         valueSideChannel.set(sentinel2, sideChannel);
         pushToArray(values, stringify3(
@@ -17973,8 +17973,8 @@ var require_stringify = __commonJS({
         strictNullHandling: typeof opts.strictNullHandling === "boolean" ? opts.strictNullHandling : defaults3.strictNullHandling
       };
     };
-    module.exports = function(object3, opts) {
-      var obj = object3;
+    module.exports = function(object4, opts) {
+      var obj = object4;
       var options = normalizeStringifyOptions(opts);
       var objKeys;
       var filter;
@@ -18533,8 +18533,8 @@ var require_escape_html = __commonJS({
     "use strict";
     var matchHtmlRegExp = /["'&<>]/;
     module.exports = escapeHtml;
-    function escapeHtml(string5) {
-      var str = "" + string5;
+    function escapeHtml(string6) {
+      var str = "" + string6;
       var match = matchHtmlRegExp.exec(str);
       if (!match) {
         return str;
@@ -18900,7 +18900,7 @@ var require_content_type = __commonJS({
       if (!type || !TYPE_REGEXP.test(type)) {
         throw new TypeError("invalid type");
       }
-      var string5 = type;
+      var string6 = type;
       if (parameters && typeof parameters === "object") {
         var param;
         var params = Object.keys(parameters).sort();
@@ -18909,16 +18909,16 @@ var require_content_type = __commonJS({
           if (!TOKEN_REGEXP.test(param)) {
             throw new TypeError("invalid parameter name");
           }
-          string5 += "; " + param + "=" + qstring(parameters[param]);
+          string6 += "; " + param + "=" + qstring(parameters[param]);
         }
       }
-      return string5;
+      return string6;
     }
-    function parse3(string5) {
-      if (!string5) {
+    function parse3(string6) {
+      if (!string6) {
         throw new TypeError("argument string is required");
       }
-      var header = typeof string5 === "object" ? getcontenttype(string5) : string5;
+      var header = typeof string6 === "object" ? getcontenttype(string6) : string6;
       if (typeof header !== "string") {
         throw new TypeError("argument string is required to be a string");
       }
@@ -19215,16 +19215,16 @@ var require_ipaddr = __commonJS({
         fourOctet: new RegExp("^" + ipv4Part + "\\." + ipv4Part + "\\." + ipv4Part + "\\." + ipv4Part + "$", "i"),
         longValue: new RegExp("^" + ipv4Part + "$", "i")
       };
-      ipaddr.IPv4.parser = function(string5) {
+      ipaddr.IPv4.parser = function(string6) {
         var match, parseIntAuto, part, shift, value;
-        parseIntAuto = function(string6) {
-          if (string6[0] === "0" && string6[1] !== "x") {
-            return parseInt(string6, 8);
+        parseIntAuto = function(string7) {
+          if (string7[0] === "0" && string7[1] !== "x") {
+            return parseInt(string7, 8);
           } else {
-            return parseInt(string6);
+            return parseInt(string7);
           }
         };
-        if (match = string5.match(ipv4Regexes.fourOctet)) {
+        if (match = string6.match(ipv4Regexes.fourOctet)) {
           return (function() {
             var k, len, ref, results;
             ref = match.slice(1, 6);
@@ -19235,7 +19235,7 @@ var require_ipaddr = __commonJS({
             }
             return results;
           })();
-        } else if (match = string5.match(ipv4Regexes.longValue)) {
+        } else if (match = string6.match(ipv4Regexes.longValue)) {
           value = parseIntAuto(match[1]);
           if (value > 4294967295 || value < 0) {
             throw new Error("ipaddr: address outside defined range");
@@ -19283,21 +19283,21 @@ var require_ipaddr = __commonJS({
           return this.toNormalizedString().replace(/((^|:)(0(:|$))+)/, "::");
         };
         IPv6.prototype.toRFC5952String = function() {
-          var bestMatchIndex, bestMatchLength, match, regex, string5;
+          var bestMatchIndex, bestMatchLength, match, regex, string6;
           regex = /((^|:)(0(:|$)){2,})/g;
-          string5 = this.toNormalizedString();
+          string6 = this.toNormalizedString();
           bestMatchIndex = 0;
           bestMatchLength = -1;
-          while (match = regex.exec(string5)) {
+          while (match = regex.exec(string6)) {
             if (match[0].length > bestMatchLength) {
               bestMatchIndex = match.index;
               bestMatchLength = match[0].length;
             }
           }
           if (bestMatchLength < 0) {
-            return string5;
+            return string6;
           }
-          return string5.substring(0, bestMatchIndex) + "::" + string5.substring(bestMatchIndex + bestMatchLength);
+          return string6.substring(0, bestMatchIndex) + "::" + string6.substring(bestMatchIndex + bestMatchLength);
         };
         IPv6.prototype.toByteArray = function() {
           var bytes, k, len, part, ref;
@@ -19432,25 +19432,25 @@ var require_ipaddr = __commonJS({
         "native": new RegExp("^(::)?(" + ipv6Part + ")?([0-9a-f]+)?(::)?(" + zoneIndex + ")?$", "i"),
         transitional: new RegExp("^((?:" + ipv6Part + ")|(?:::)(?:" + ipv6Part + ")?)" + (ipv4Part + "\\." + ipv4Part + "\\." + ipv4Part + "\\." + ipv4Part) + ("(" + zoneIndex + ")?$"), "i")
       };
-      expandIPv6 = function(string5, parts) {
+      expandIPv6 = function(string6, parts) {
         var colonCount, lastColon, part, replacement, replacementCount, zoneId;
-        if (string5.indexOf("::") !== string5.lastIndexOf("::")) {
+        if (string6.indexOf("::") !== string6.lastIndexOf("::")) {
           return null;
         }
-        zoneId = (string5.match(ipv6Regexes["zoneIndex"]) || [])[0];
+        zoneId = (string6.match(ipv6Regexes["zoneIndex"]) || [])[0];
         if (zoneId) {
           zoneId = zoneId.substring(1);
-          string5 = string5.replace(/%.+$/, "");
+          string6 = string6.replace(/%.+$/, "");
         }
         colonCount = 0;
         lastColon = -1;
-        while ((lastColon = string5.indexOf(":", lastColon + 1)) >= 0) {
+        while ((lastColon = string6.indexOf(":", lastColon + 1)) >= 0) {
           colonCount++;
         }
-        if (string5.substr(0, 2) === "::") {
+        if (string6.substr(0, 2) === "::") {
           colonCount--;
         }
-        if (string5.substr(-2, 2) === "::") {
+        if (string6.substr(-2, 2) === "::") {
           colonCount--;
         }
         if (colonCount > parts) {
@@ -19461,16 +19461,16 @@ var require_ipaddr = __commonJS({
         while (replacementCount--) {
           replacement += "0:";
         }
-        string5 = string5.replace("::", replacement);
-        if (string5[0] === ":") {
-          string5 = string5.slice(1);
+        string6 = string6.replace("::", replacement);
+        if (string6[0] === ":") {
+          string6 = string6.slice(1);
         }
-        if (string5[string5.length - 1] === ":") {
-          string5 = string5.slice(0, -1);
+        if (string6[string6.length - 1] === ":") {
+          string6 = string6.slice(0, -1);
         }
         parts = (function() {
           var k, len, ref, results;
-          ref = string5.split(":");
+          ref = string6.split(":");
           results = [];
           for (k = 0, len = ref.length; k < len; k++) {
             part = ref[k];
@@ -19483,11 +19483,11 @@ var require_ipaddr = __commonJS({
           zoneId
         };
       };
-      ipaddr.IPv6.parser = function(string5) {
+      ipaddr.IPv6.parser = function(string6) {
         var addr, k, len, match, octet, octets, zoneId;
-        if (ipv6Regexes["native"].test(string5)) {
-          return expandIPv6(string5, 8);
-        } else if (match = string5.match(ipv6Regexes["transitional"])) {
+        if (ipv6Regexes["native"].test(string6)) {
+          return expandIPv6(string6, 8);
+        } else if (match = string6.match(ipv6Regexes["transitional"])) {
           zoneId = match[6] || "";
           addr = expandIPv6(match[1].slice(0, -1) + zoneId, 6);
           if (addr.parts) {
@@ -19508,33 +19508,33 @@ var require_ipaddr = __commonJS({
         }
         return null;
       };
-      ipaddr.IPv4.isIPv4 = ipaddr.IPv6.isIPv6 = function(string5) {
-        return this.parser(string5) !== null;
+      ipaddr.IPv4.isIPv4 = ipaddr.IPv6.isIPv6 = function(string6) {
+        return this.parser(string6) !== null;
       };
-      ipaddr.IPv4.isValid = function(string5) {
+      ipaddr.IPv4.isValid = function(string6) {
         var e2;
         try {
-          new this(this.parser(string5));
+          new this(this.parser(string6));
           return true;
         } catch (error1) {
           e2 = error1;
           return false;
         }
       };
-      ipaddr.IPv4.isValidFourPartDecimal = function(string5) {
-        if (ipaddr.IPv4.isValid(string5) && string5.match(/^(0|[1-9]\d*)(\.(0|[1-9]\d*)){3}$/)) {
+      ipaddr.IPv4.isValidFourPartDecimal = function(string6) {
+        if (ipaddr.IPv4.isValid(string6) && string6.match(/^(0|[1-9]\d*)(\.(0|[1-9]\d*)){3}$/)) {
           return true;
         } else {
           return false;
         }
       };
-      ipaddr.IPv6.isValid = function(string5) {
+      ipaddr.IPv6.isValid = function(string6) {
         var addr, e2;
-        if (typeof string5 === "string" && string5.indexOf(":") === -1) {
+        if (typeof string6 === "string" && string6.indexOf(":") === -1) {
           return false;
         }
         try {
-          addr = this.parser(string5);
+          addr = this.parser(string6);
           new this(addr.parts, addr.zoneId);
           return true;
         } catch (error1) {
@@ -19542,25 +19542,25 @@ var require_ipaddr = __commonJS({
           return false;
         }
       };
-      ipaddr.IPv4.parse = function(string5) {
+      ipaddr.IPv4.parse = function(string6) {
         var parts;
-        parts = this.parser(string5);
+        parts = this.parser(string6);
         if (parts === null) {
           throw new Error("ipaddr: string is not formatted like ip address");
         }
         return new this(parts);
       };
-      ipaddr.IPv6.parse = function(string5) {
+      ipaddr.IPv6.parse = function(string6) {
         var addr;
-        addr = this.parser(string5);
+        addr = this.parser(string6);
         if (addr.parts === null) {
           throw new Error("ipaddr: string is not formatted like ip address");
         }
         return new this(addr.parts, addr.zoneId);
       };
-      ipaddr.IPv4.parseCIDR = function(string5) {
+      ipaddr.IPv4.parseCIDR = function(string6) {
         var maskLength, match, parsed;
-        if (match = string5.match(/^(.+)\/(\d+)$/)) {
+        if (match = string6.match(/^(.+)\/(\d+)$/)) {
           maskLength = parseInt(match[2]);
           if (maskLength >= 0 && maskLength <= 32) {
             parsed = [this.parse(match[1]), maskLength];
@@ -19592,10 +19592,10 @@ var require_ipaddr = __commonJS({
         }
         return new this(octets);
       };
-      ipaddr.IPv4.broadcastAddressFromCIDR = function(string5) {
+      ipaddr.IPv4.broadcastAddressFromCIDR = function(string6) {
         var cidr2, error40, i2, ipInterfaceOctets, octets, subnetMaskOctets;
         try {
-          cidr2 = this.parseCIDR(string5);
+          cidr2 = this.parseCIDR(string6);
           ipInterfaceOctets = cidr2[0].toByteArray();
           subnetMaskOctets = this.subnetMaskFromPrefixLength(cidr2[1]).toByteArray();
           octets = [];
@@ -19610,10 +19610,10 @@ var require_ipaddr = __commonJS({
           throw new Error("ipaddr: the address does not have IPv4 CIDR format");
         }
       };
-      ipaddr.IPv4.networkAddressFromCIDR = function(string5) {
+      ipaddr.IPv4.networkAddressFromCIDR = function(string6) {
         var cidr2, error40, i2, ipInterfaceOctets, octets, subnetMaskOctets;
         try {
-          cidr2 = this.parseCIDR(string5);
+          cidr2 = this.parseCIDR(string6);
           ipInterfaceOctets = cidr2[0].toByteArray();
           subnetMaskOctets = this.subnetMaskFromPrefixLength(cidr2[1]).toByteArray();
           octets = [];
@@ -19628,9 +19628,9 @@ var require_ipaddr = __commonJS({
           throw new Error("ipaddr: the address does not have IPv4 CIDR format");
         }
       };
-      ipaddr.IPv6.parseCIDR = function(string5) {
+      ipaddr.IPv6.parseCIDR = function(string6) {
         var maskLength, match, parsed;
-        if (match = string5.match(/^(.+)\/(\d+)$/)) {
+        if (match = string6.match(/^(.+)\/(\d+)$/)) {
           maskLength = parseInt(match[2]);
           if (maskLength >= 0 && maskLength <= 128) {
             parsed = [this.parse(match[1]), maskLength];
@@ -19644,26 +19644,26 @@ var require_ipaddr = __commonJS({
         }
         throw new Error("ipaddr: string is not formatted like an IPv6 CIDR range");
       };
-      ipaddr.isValid = function(string5) {
-        return ipaddr.IPv6.isValid(string5) || ipaddr.IPv4.isValid(string5);
+      ipaddr.isValid = function(string6) {
+        return ipaddr.IPv6.isValid(string6) || ipaddr.IPv4.isValid(string6);
       };
-      ipaddr.parse = function(string5) {
-        if (ipaddr.IPv6.isValid(string5)) {
-          return ipaddr.IPv6.parse(string5);
-        } else if (ipaddr.IPv4.isValid(string5)) {
-          return ipaddr.IPv4.parse(string5);
+      ipaddr.parse = function(string6) {
+        if (ipaddr.IPv6.isValid(string6)) {
+          return ipaddr.IPv6.parse(string6);
+        } else if (ipaddr.IPv4.isValid(string6)) {
+          return ipaddr.IPv4.parse(string6);
         } else {
           throw new Error("ipaddr: the address has neither IPv6 nor IPv4 format");
         }
       };
-      ipaddr.parseCIDR = function(string5) {
+      ipaddr.parseCIDR = function(string6) {
         var e2;
         try {
-          return ipaddr.IPv6.parseCIDR(string5);
+          return ipaddr.IPv6.parseCIDR(string6);
         } catch (error1) {
           e2 = error1;
           try {
-            return ipaddr.IPv4.parseCIDR(string5);
+            return ipaddr.IPv4.parseCIDR(string6);
           } catch (error110) {
             e2 = error110;
             throw new Error("ipaddr: the address has neither IPv6 nor IPv4 CIDR format");
@@ -19681,9 +19681,9 @@ var require_ipaddr = __commonJS({
           throw new Error("ipaddr: the binary input is neither an IPv6 nor IPv4 address");
         }
       };
-      ipaddr.process = function(string5) {
+      ipaddr.process = function(string6) {
         var addr;
-        addr = this.parse(string5);
+        addr = this.parse(string6);
         if (addr.kind() === "ipv6" && addr.isIPv4MappedAddress()) {
           return addr.toIPv4Address();
         } else {
@@ -22251,17 +22251,17 @@ var require_content_disposition = __commonJS({
       if (!type || typeof type !== "string" || !TOKEN_REGEXP.test(type)) {
         throw new TypeError("invalid type");
       }
-      var string5 = String(type).toLowerCase();
+      var string6 = String(type).toLowerCase();
       if (parameters && typeof parameters === "object") {
         var param;
         var params = Object.keys(parameters).sort();
         for (var i2 = 0; i2 < params.length; i2++) {
           param = params[i2];
           var val = param.slice(-1) === "*" ? ustring(parameters[param]) : qstring(parameters[param]);
-          string5 += "; " + param + "=" + val;
+          string6 += "; " + param + "=" + val;
         }
       }
-      return string5;
+      return string6;
     }
     function decodefield(str) {
       const match = EXT_VALUE_REGEXP.exec(str);
@@ -22294,11 +22294,11 @@ var require_content_disposition = __commonJS({
     function getlatin1(val) {
       return String(val).replace(NON_LATIN1_REGEXP, "?");
     }
-    function parse3(string5) {
-      if (!string5 || typeof string5 !== "string") {
+    function parse3(string6) {
+      if (!string6 || typeof string6 !== "string") {
         throw new TypeError("argument string is required");
       }
-      var match = DISPOSITION_TYPE_REGEXP.exec(string5);
+      var match = DISPOSITION_TYPE_REGEXP.exec(string6);
       if (!match) {
         throw new TypeError("invalid type format");
       }
@@ -22309,7 +22309,7 @@ var require_content_disposition = __commonJS({
       var params = {};
       var value;
       index = PARAM_REGEXP.lastIndex = match[0].slice(-1) === ";" ? index - 1 : index;
-      while (match = PARAM_REGEXP.exec(string5)) {
+      while (match = PARAM_REGEXP.exec(string6)) {
         if (match.index !== index) {
           throw new TypeError("invalid parameter format");
         }
@@ -22334,7 +22334,7 @@ var require_content_disposition = __commonJS({
         }
         params[key] = value;
       }
-      if (index !== -1 && index !== string5.length) {
+      if (index !== -1 && index !== string6.length) {
         throw new TypeError("invalid parameter format");
       }
       return new ContentDisposition(type, params);
@@ -22520,7 +22520,7 @@ var require_cookie = __commonJS({
       }
       if (opt.expires) {
         var expires = opt.expires;
-        if (!isDate(expires) || isNaN(expires.valueOf())) {
+        if (!isDate2(expires) || isNaN(expires.valueOf())) {
           throw new TypeError("option expires is invalid");
         }
         str += "; Expires=" + expires.toUTCString();
@@ -22574,7 +22574,7 @@ var require_cookie = __commonJS({
     function decode(str) {
       return str.indexOf("%") !== -1 ? decodeURIComponent(str) : str;
     }
-    function isDate(val) {
+    function isDate2(val) {
       return __toString.call(val) === "[object Date]";
     }
     function tryDecode(str, decode2) {
@@ -28796,8 +28796,8 @@ var require_textParsers = __commonJS({
       if (!value) return null;
       return array2.parse(value, parseBool);
     }
-    function parseBaseTenInt(string5) {
-      return parseInt(string5, 10);
+    function parseBaseTenInt(string6) {
+      return parseInt(string6, 10);
     }
     function parseIntegerArray(value) {
       if (!value) return null;
@@ -29437,7 +29437,7 @@ var require_utils4 = __commonJS({
   "node_modules/.pnpm/pg@8.23.0/node_modules/pg/lib/utils.js"(exports, module) {
     "use strict";
     var defaults3 = require_defaults();
-    var { isDate } = __require("util/types");
+    var { isDate: isDate2 } = __require("util/types");
     function escapeElement(elementRepresentation) {
       const escaped = elementRepresentation.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
       return '"' + escaped + '"';
@@ -29476,7 +29476,7 @@ var require_utils4 = __commonJS({
         if (ArrayBuffer.isView(val)) {
           return Buffer.from(val.buffer, val.byteOffset, val.byteLength);
         }
-        if (isDate(val)) {
+        if (isDate2(val)) {
           if (defaults3.parseInputDatesAsUTC) {
             return dateToStringUTC(val);
           } else {
@@ -29599,11 +29599,11 @@ var require_utils5 = __commonJS({
     function randomBytes2(length) {
       return webCrypto.getRandomValues(Buffer.alloc(length));
     }
-    async function md5(string5) {
+    async function md5(string6) {
       try {
-        return nodeCrypto.createHash("md5").update(string5, "utf-8").digest("hex");
+        return nodeCrypto.createHash("md5").update(string6, "utf-8").digest("hex");
       } catch (e2) {
-        const data = typeof string5 === "string" ? textEncoder.encode(string5) : string5;
+        const data = typeof string6 === "string" ? textEncoder.encode(string6) : string6;
         const hash = await subtleCrypto.digest("MD5", data);
         return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
       }
@@ -30797,22 +30797,22 @@ var require_buffer_writer = __commonJS({
         this.buffer[this.offset++] = num >>> 0 & 255;
         return this;
       }
-      addCString(string5) {
-        if (!string5) {
+      addCString(string6) {
+        if (!string6) {
           this.ensure(1);
         } else {
-          const len = Buffer.byteLength(string5);
+          const len = Buffer.byteLength(string6);
           this.ensure(len + 1);
-          this.buffer.write(string5, this.offset, "utf-8");
+          this.buffer.write(string6, this.offset, "utf-8");
           this.offset += len;
         }
         this.buffer[this.offset++] = 0;
         return this;
       }
-      addString(string5 = "") {
-        const len = Buffer.byteLength(string5);
+      addString(string6 = "") {
+        const len = Buffer.byteLength(string6);
         this.ensure(len);
-        this.buffer.write(string5, this.offset);
+        this.buffer.write(string6, this.offset);
         this.offset += len;
         return this;
       }
@@ -30822,8 +30822,8 @@ var require_buffer_writer = __commonJS({
       // `addInt32(Buffer.byteLength(s)).addString(s)` pairing scanned the string
       // three times (byteLength for the prefix, byteLength again inside addString,
       // then the encode), which is costly for large text parameters.
-      addInt32PrefixedString(string5) {
-        const len = Buffer.byteLength(string5);
+      addInt32PrefixedString(string6) {
+        const len = Buffer.byteLength(string6);
         this.ensure(4 + len);
         const buffer = this.buffer;
         let offset = this.offset;
@@ -30831,7 +30831,7 @@ var require_buffer_writer = __commonJS({
         buffer[offset++] = len >>> 16 & 255;
         buffer[offset++] = len >>> 8 & 255;
         buffer[offset++] = len >>> 0 & 255;
-        buffer.write(string5, offset, "utf-8");
+        buffer.write(string6, offset, "utf-8");
         this.offset = offset + len;
         return this;
       }
@@ -31012,13 +31012,13 @@ var require_serializer = __commonJS({
       buffer.writeInt32BE(secretKey, 12);
       return buffer;
     };
-    var cstringMessage = (code, string5) => {
-      const stringLen = Buffer.byteLength(string5);
+    var cstringMessage = (code, string6) => {
+      const stringLen = Buffer.byteLength(string6);
       const len = 4 + stringLen + 1;
       const buffer = Buffer.allocUnsafe(1 + len);
       buffer[0] = code;
       buffer.writeInt32BE(len, 1);
-      buffer.write(string5, 5, "utf-8");
+      buffer.write(string6, 5, "utf-8");
       buffer[len] = 0;
       return buffer;
     };
@@ -39303,8 +39303,8 @@ var init_fetch_blob = __esm({
       get [Symbol.toStringTag]() {
         return "Blob";
       }
-      static [Symbol.hasInstance](object3) {
-        return object3 && typeof object3 === "object" && typeof object3.constructor === "function" && (typeof object3.stream === "function" || typeof object3.arrayBuffer === "function") && /^(Blob|File)$/.test(object3[Symbol.toStringTag]);
+      static [Symbol.hasInstance](object4) {
+        return object4 && typeof object4 === "object" && typeof object4.constructor === "function" && (typeof object4.stream === "function" || typeof object4.arrayBuffer === "function") && /^(Blob|File)$/.test(object4[Symbol.toStringTag]);
       }
     };
     Object.defineProperties(_Blob.prototype, {
@@ -39352,8 +39352,8 @@ var init_file = __esm({
       get [Symbol.toStringTag]() {
         return "File";
       }
-      static [Symbol.hasInstance](object3) {
-        return !!object3 && object3 instanceof fetch_blob_default && /^(File)$/.test(object3[Symbol.toStringTag]);
+      static [Symbol.hasInstance](object4) {
+        return !!object4 && object4 instanceof fetch_blob_default && /^(File)$/.test(object4[Symbol.toStringTag]);
       }
     };
     File3 = _File;
@@ -39505,14 +39505,14 @@ var NAME, isURLSearchParameters, isBlob, isAbortSignal, isDomainOrSubdomain, isS
 var init_is = __esm({
   "node_modules/.pnpm/node-fetch@3.3.2/node_modules/node-fetch/src/utils/is.js"() {
     NAME = Symbol.toStringTag;
-    isURLSearchParameters = (object3) => {
-      return typeof object3 === "object" && typeof object3.append === "function" && typeof object3.delete === "function" && typeof object3.get === "function" && typeof object3.getAll === "function" && typeof object3.has === "function" && typeof object3.set === "function" && typeof object3.sort === "function" && object3[NAME] === "URLSearchParams";
+    isURLSearchParameters = (object4) => {
+      return typeof object4 === "object" && typeof object4.append === "function" && typeof object4.delete === "function" && typeof object4.get === "function" && typeof object4.getAll === "function" && typeof object4.has === "function" && typeof object4.set === "function" && typeof object4.sort === "function" && object4[NAME] === "URLSearchParams";
     };
-    isBlob = (object3) => {
-      return object3 && typeof object3 === "object" && typeof object3.arrayBuffer === "function" && typeof object3.type === "string" && typeof object3.stream === "function" && typeof object3.constructor === "function" && /^(Blob|File)$/.test(object3[NAME]);
+    isBlob = (object4) => {
+      return object4 && typeof object4 === "object" && typeof object4.arrayBuffer === "function" && typeof object4.type === "string" && typeof object4.stream === "function" && typeof object4.constructor === "function" && /^(Blob|File)$/.test(object4[NAME]);
     };
-    isAbortSignal = (object3) => {
-      return typeof object3 === "object" && (object3[NAME] === "AbortSignal" || object3[NAME] === "EventTarget");
+    isAbortSignal = (object4) => {
+      return typeof object4 === "object" && (object4[NAME] === "AbortSignal" || object4[NAME] === "EventTarget");
     };
     isDomainOrSubdomain = (destination, original) => {
       const orig = new URL(original).hostname;
@@ -40726,8 +40726,8 @@ var init_request = __esm({
     init_get_search();
     init_referrer();
     INTERNALS3 = /* @__PURE__ */ Symbol("Request internals");
-    isRequest = (object3) => {
-      return typeof object3 === "object" && typeof object3[INTERNALS3] === "object";
+    isRequest = (object4) => {
+      return typeof object4 === "object" && typeof object4[INTERNALS3] === "object";
     };
     doBadDataWarn = deprecate2(
       () => {
@@ -43119,12 +43119,12 @@ var require_stringify2 = __commonJS({
         '"': '\\"',
         "\\": "\\\\"
       }, rep;
-      function quote(string5) {
+      function quote(string6) {
         escapable.lastIndex = 0;
-        return escapable.test(string5) ? '"' + string5.replace(escapable, function(a) {
+        return escapable.test(string6) ? '"' + string6.replace(escapable, function(a) {
           var c = meta[a];
           return typeof c === "string" ? c : "\\u" + ("0000" + a.charCodeAt(0).toString(16)).slice(-4);
-        }) + '"' : '"' + string5 + '"';
+        }) + '"' : '"' + string6 + '"';
       }
       function str(key, holder) {
         var i2, k, v, length, mind = gap, partial2, value = holder[key], isBigNumber = value != null && (value instanceof BigNumber || BigNumber.isBigNumber(value));
@@ -43283,55 +43283,55 @@ var require_parse2 = __commonJS({
         at += 1;
         return ch;
       }, number4 = function() {
-        var number5, string6 = "";
+        var number5, string7 = "";
         if (ch === "-") {
-          string6 = "-";
+          string7 = "-";
           next("-");
         }
         while (ch >= "0" && ch <= "9") {
-          string6 += ch;
+          string7 += ch;
           next();
         }
         if (ch === ".") {
-          string6 += ".";
+          string7 += ".";
           while (next() && ch >= "0" && ch <= "9") {
-            string6 += ch;
+            string7 += ch;
           }
         }
         if (ch === "e" || ch === "E") {
-          string6 += ch;
+          string7 += ch;
           next();
           if (ch === "-" || ch === "+") {
-            string6 += ch;
+            string7 += ch;
             next();
           }
           while (ch >= "0" && ch <= "9") {
-            string6 += ch;
+            string7 += ch;
             next();
           }
         }
-        number5 = +string6;
+        number5 = +string7;
         if (!isFinite(number5)) {
           error40("Bad number");
         } else {
           if (BigNumber == null) BigNumber = require_bignumber();
-          if (string6.length > 15)
-            return _options.storeAsString ? string6 : _options.useNativeBigInt ? BigInt(string6) : new BigNumber(string6);
+          if (string7.length > 15)
+            return _options.storeAsString ? string7 : _options.useNativeBigInt ? BigInt(string7) : new BigNumber(string7);
           else
             return !_options.alwaysParseAsBig ? number5 : _options.useNativeBigInt ? BigInt(number5) : new BigNumber(number5);
         }
-      }, string5 = function() {
-        var hex, i2, string6 = "", uffff;
+      }, string6 = function() {
+        var hex, i2, string7 = "", uffff;
         if (ch === '"') {
           var startAt = at;
           while (next()) {
             if (ch === '"') {
-              if (at - 1 > startAt) string6 += text3.substring(startAt, at - 1);
+              if (at - 1 > startAt) string7 += text3.substring(startAt, at - 1);
               next();
-              return string6;
+              return string7;
             }
             if (ch === "\\") {
-              if (at - 1 > startAt) string6 += text3.substring(startAt, at - 1);
+              if (at - 1 > startAt) string7 += text3.substring(startAt, at - 1);
               next();
               if (ch === "u") {
                 uffff = 0;
@@ -43342,9 +43342,9 @@ var require_parse2 = __commonJS({
                   }
                   uffff = uffff * 16 + hex;
                 }
-                string6 += String.fromCharCode(uffff);
+                string7 += String.fromCharCode(uffff);
               } else if (typeof escapee[ch] === "string") {
-                string6 += escapee[ch];
+                string7 += escapee[ch];
               } else {
                 break;
               }
@@ -43401,20 +43401,20 @@ var require_parse2 = __commonJS({
           }
         }
         error40("Bad array");
-      }, object3 = function() {
-        var key, object4 = /* @__PURE__ */ Object.create(null);
+      }, object4 = function() {
+        var key, object5 = /* @__PURE__ */ Object.create(null);
         if (ch === "{") {
           next("{");
           white();
           if (ch === "}") {
             next("}");
-            return object4;
+            return object5;
           }
           while (ch) {
-            key = string5();
+            key = string6();
             white();
             next(":");
-            if (_options.strict === true && Object.hasOwnProperty.call(object4, key)) {
+            if (_options.strict === true && Object.hasOwnProperty.call(object5, key)) {
               error40('Duplicate key "' + key + '"');
             }
             if (suspectProtoRx.test(key) === true) {
@@ -43423,7 +43423,7 @@ var require_parse2 = __commonJS({
               } else if (_options.protoAction === "ignore") {
                 value();
               } else {
-                object4[key] = value();
+                object5[key] = value();
               }
             } else if (suspectConstructorRx.test(key) === true) {
               if (_options.constructorAction === "error") {
@@ -43431,15 +43431,15 @@ var require_parse2 = __commonJS({
               } else if (_options.constructorAction === "ignore") {
                 value();
               } else {
-                object4[key] = value();
+                object5[key] = value();
               }
             } else {
-              object4[key] = value();
+              object5[key] = value();
             }
             white();
             if (ch === "}") {
               next("}");
-              return object4;
+              return object5;
             }
             next(",");
             white();
@@ -43451,11 +43451,11 @@ var require_parse2 = __commonJS({
         white();
         switch (ch) {
           case "{":
-            return object3();
+            return object4();
           case "[":
             return array2();
           case '"':
-            return string5();
+            return string6();
           case "-":
             return number4();
           default:
@@ -44854,13 +44854,13 @@ var require_util2 = __commonJS({
       }
     };
     exports.LRUCache = LRUCache;
-    function removeUndefinedValuesInObject(object3) {
-      Object.entries(object3).forEach(([key, value]) => {
+    function removeUndefinedValuesInObject(object4) {
+      Object.entries(object4).forEach(([key, value]) => {
         if (value === void 0 || value === "undefined") {
-          delete object3[key];
+          delete object4[key];
         }
       });
-      return object3;
+      return object4;
     }
     async function isValidFile(filePath) {
       try {
@@ -46503,8 +46503,8 @@ var require_sign_stream = __commonJS({
     var Stream4 = __require("stream");
     var toString = require_tostring();
     var util2 = __require("util");
-    function base64url3(string5, encoding) {
-      return Buffer4.from(string5, encoding).toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+    function base64url3(string6, encoding) {
+      return Buffer4.from(string6, encoding).toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
     }
     function jwsSecuredInput(header, payload, encoding) {
       encoding = encoding || "utf8";
@@ -46606,8 +46606,8 @@ var require_verify_stream = __commonJS({
       var payload = jwsSig.split(".")[1];
       return Buffer4.from(payload, "base64").toString(encoding);
     }
-    function isValidJws(string5) {
-      return JWS_REGEX.test(string5) && !!headerFromJWS(string5);
+    function isValidJws(string6) {
+      return JWS_REGEX.test(string6) && !!headerFromJWS(string6);
     }
     function jwsVerify(jwsSig, algorithm, secretOrKey) {
       if (!algorithm) {
@@ -51532,10 +51532,10 @@ var util;
       return obj[e2];
     });
   };
-  util2.objectKeys = typeof Object.keys === "function" ? (obj) => Object.keys(obj) : (object3) => {
+  util2.objectKeys = typeof Object.keys === "function" ? (obj) => Object.keys(obj) : (object4) => {
     const keys = [];
-    for (const key in object3) {
-      if (Object.prototype.hasOwnProperty.call(object3, key)) {
+    for (const key in object4) {
+      if (Object.prototype.hasOwnProperty.call(object4, key)) {
         keys.push(key);
       }
     }
@@ -63213,19 +63213,19 @@ function floatSafeRemainder2(val, step) {
   const stepInt = Number.parseInt(step.toFixed(decCount).replace(".", ""));
   return valInt % stepInt / 10 ** decCount;
 }
-function defineLazy(object3, key, getter) {
+function defineLazy(object4, key, getter) {
   const set2 = false;
-  Object.defineProperty(object3, key, {
+  Object.defineProperty(object4, key, {
     get() {
       if (!set2) {
         const value = getter();
-        object3[key] = value;
+        object4[key] = value;
         return value;
       }
       throw new Error("cached value already set");
     },
     set(v) {
-      Object.defineProperty(object3, key, {
+      Object.defineProperty(object4, key, {
         value: v
         // configurable: true,
       });
@@ -65086,15 +65086,15 @@ var $ZodDate = /* @__PURE__ */ $constructor("$ZodDate", (inst, def) => {
       }
     }
     const input = payload.value;
-    const isDate = input instanceof Date;
-    const isValidDate = isDate && !Number.isNaN(input.getTime());
+    const isDate2 = input instanceof Date;
+    const isValidDate = isDate2 && !Number.isNaN(input.getTime());
     if (isValidDate)
       return payload;
     payload.issues.push({
       expected: "date",
       code: "invalid_type",
       input,
-      ...isDate ? { received: "Invalid Date" } : {},
+      ...isDate2 ? { received: "Invalid Date" } : {},
       inst
     });
     return payload;
@@ -76004,22 +76004,22 @@ var encode = (str, _defaultEncoder, charset, _kind, format) => {
   if (str.length === 0) {
     return str;
   }
-  let string5 = str;
+  let string6 = str;
   if (typeof str === "symbol") {
-    string5 = Symbol.prototype.toString.call(str);
+    string6 = Symbol.prototype.toString.call(str);
   } else if (typeof str !== "string") {
-    string5 = String(str);
+    string6 = String(str);
   }
   if (charset === "iso-8859-1") {
-    return escape(string5).replace(/%u[0-9a-f]{4}/gi, ($0) => "%26%23" + Number.parseInt($0.slice(2), 16) + "%3B");
+    return escape(string6).replace(/%u[0-9a-f]{4}/gi, ($0) => "%26%23" + Number.parseInt($0.slice(2), 16) + "%3B");
   }
   let out = "";
-  for (let j = 0; j < string5.length; ) {
-    let segmentEnd = Math.min((Math.floor(j / limit) + 1) * limit, string5.length);
-    if (segmentEnd < string5.length && string5.codePointAt(segmentEnd - 1) > 65535) {
+  for (let j = 0; j < string6.length; ) {
+    let segmentEnd = Math.min((Math.floor(j / limit) + 1) * limit, string6.length);
+    if (segmentEnd < string6.length && string6.codePointAt(segmentEnd - 1) > 65535) {
       segmentEnd += 1;
     }
-    const segment = string5.length >= limit ? string5.slice(j, segmentEnd) : string5;
+    const segment = string6.length >= limit ? string6.slice(j, segmentEnd) : string6;
     const arr = [];
     for (let i2 = 0; i2 < segment.length; ++i2) {
       let c = segment.charCodeAt(i2);
@@ -76115,13 +76115,13 @@ function is_non_nullish_primitive(v) {
   return typeof v === "string" || typeof v === "number" || typeof v === "boolean" || typeof v === "symbol" || typeof v === "bigint";
 }
 var sentinel = {};
-function inner_stringify(object3, prefix, generateArrayPrefix, commaRoundTrip, allowEmptyArrays, strictNullHandling, skipNulls, encodeDotInKeys, encoder, filter, sort, allowDots, serializeDate, format, formatter, encodeValuesOnly, charset, sideChannel) {
-  let obj = object3;
+function inner_stringify(object4, prefix, generateArrayPrefix, commaRoundTrip, allowEmptyArrays, strictNullHandling, skipNulls, encodeDotInKeys, encoder, filter, sort, allowDots, serializeDate, format, formatter, encodeValuesOnly, charset, sideChannel) {
+  let obj = object4;
   let tmp_sc = sideChannel;
   let step = 0;
   let find_flag = false;
   while ((tmp_sc = tmp_sc.get(sentinel)) !== void 0 && !find_flag) {
-    const pos = tmp_sc.get(object3);
+    const pos = tmp_sc.get(object4);
     step += 1;
     if (pos !== void 0) {
       if (pos === step) {
@@ -76207,7 +76207,7 @@ function inner_stringify(object3, prefix, generateArrayPrefix, commaRoundTrip, a
     } else {
       key_prefix = adjusted_prefix + (allowDots ? "." + encoded_key : "[" + encoded_key + "]");
     }
-    sideChannel.set(object3, step);
+    sideChannel.set(object4, step);
     const valueSideChannel = new WeakMap([[sentinel, sideChannel]]);
     push_to_array(values, inner_stringify(
       value,
@@ -76300,8 +76300,8 @@ function normalize_stringify_options(opts = defaults2) {
     strictNullHandling: typeof opts.strictNullHandling === "boolean" ? opts.strictNullHandling : defaults2.strictNullHandling
   };
 }
-function stringify(object3, opts = {}) {
-  let obj = object3;
+function stringify(object4, opts = {}) {
+  let obj = object4;
   const options = normalize_stringify_options(opts);
   let obj_keys;
   let filter;
@@ -92673,7 +92673,7 @@ async function generateAi(system, input, schema2, onUsage) {
       input: [{ role: "system", content: system }, { role: "user", content: input }],
       max_output_tokens: schema2 ? 2200 : 700,
       store: false,
-      ...schema2 ? { text: { format: { type: "json_schema", name: "domus_interview", strict: true, schema: schema2 } } } : {}
+      ...schema2 ? { text: { format: { type: "json_schema", name: "domus_structured", strict: true, schema: schema2 } } } : {}
     });
   } catch (error40) {
     if (error40 instanceof OpenAI.RateLimitError) throw new AiRateLimitedError();
@@ -92686,9 +92686,132 @@ async function generateAi(system, input, schema2, onUsage) {
   if (!text3 || response.status === "incomplete" || !usage) throw new AiUnavailableError(new Error("Missing or incomplete AI response"));
   return { text: text3, usage: recordedUsage };
 }
-async function askDomusAi(message, context, history2 = [], onUsage) {
-  return generateAi(MANAGEMENT_RULES + " Responda em at\xE9 6 frases. O contexto \xE9 uma fotografia do banco; n\xE3o representa conex\xE3o com tribunais.", JSON.stringify({ context, history: history2, message }), void 0, onUsage);
+async function askDomusAiWithProposals(message, context, history2, rules, schema2, onUsage) {
+  return generateAi(MANAGEMENT_RULES + " O contexto \xE9 uma fotografia do banco; n\xE3o representa conex\xE3o com tribunais." + rules, JSON.stringify({ context, history: history2, message }), schema2, onUsage);
 }
+
+// artifacts/api-server/src/lib/chat-proposals.ts
+var MAX_PROPOSALS = 8;
+var PRIORITIES = ["urgente", "alta", "media", "baixa"];
+var string4 = { type: "string" };
+var object2 = (properties) => ({
+  type: "object",
+  properties,
+  required: Object.keys(properties),
+  additionalProperties: false
+});
+var chatReplyJsonSchema = object2({
+  reply: string4,
+  proposals: {
+    type: "array",
+    items: object2({
+      kind: { type: "string", enum: ["client", "demand"] },
+      clientName: string4,
+      email: string4,
+      title: string4,
+      service: string4,
+      responsible: string4,
+      priority: { type: "string", enum: [...PRIORITIES] },
+      dueDate: string4,
+      estimatedValue: { type: "number" },
+      description: string4,
+      customValues: {
+        type: "array",
+        items: object2({ fieldId: string4, value: string4 })
+      }
+    })
+  }
+});
+var rawProposal = external_exports.object({
+  kind: external_exports.enum(["client", "demand"]),
+  clientName: external_exports.string(),
+  email: external_exports.string(),
+  title: external_exports.string(),
+  service: external_exports.string(),
+  responsible: external_exports.string(),
+  priority: external_exports.enum(PRIORITIES).catch("media"),
+  dueDate: external_exports.string(),
+  estimatedValue: external_exports.number().catch(0),
+  description: external_exports.string(),
+  customValues: external_exports.array(external_exports.object({ fieldId: external_exports.string(), value: external_exports.string() })).catch([])
+});
+var rawReply = external_exports.object({
+  reply: external_exports.string().trim().min(1).max(4e3),
+  proposals: external_exports.array(rawProposal).catch([])
+});
+var clean = (value, max) => value.trim().slice(0, max);
+var sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
+var isDate = (value) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const d = /* @__PURE__ */ new Date(`${value}T12:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
+};
+function parseChatReply(text3, config3, existingClients) {
+  const parsed = rawReply.parse(JSON.parse(text3));
+  if (!config3) return { reply: parsed.reply, proposals: [] };
+  const proposals = [];
+  const proposedClients = [];
+  const demandFields = config3.fields.filter((f3) => f3.entity === "demand");
+  for (const raw of parsed.proposals) {
+    if (proposals.length >= MAX_PROPOSALS) break;
+    const clientName = clean(raw.clientName, 200);
+    if (!clientName) continue;
+    if (raw.kind === "client") {
+      const duplicate = existingClients.some((c) => sameName(c.name, clientName)) || proposedClients.some((name) => sameName(name, clientName));
+      if (duplicate) continue;
+      const email3 = clean(raw.email, 250);
+      proposedClients.push(clientName);
+      proposals.push({
+        kind: "client",
+        name: clientName,
+        email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email3) ? email3 : ""
+      });
+      continue;
+    }
+    const title = clean(raw.title, 200);
+    if (!title) continue;
+    const customValues2 = {};
+    for (const { fieldId, value: value2 } of raw.customValues) {
+      const field = demandFields.find((f3) => f3.id === fieldId);
+      const trimmed = value2.trim();
+      if (!field || !trimmed) continue;
+      if (field.type === "number") {
+        const n = Number(trimmed.replace(",", "."));
+        if (Number.isFinite(n)) customValues2[field.id] = n;
+      } else if (field.type === "select") {
+        const option = field.options.find((o) => sameName(o, trimmed));
+        if (option) customValues2[field.id] = option;
+      } else {
+        customValues2[field.id] = trimmed.slice(0, 2e3);
+      }
+    }
+    const service = config3.services.find((s2) => sameName(s2, raw.service)) ?? "";
+    const value = Math.round(Math.max(0, Math.min(raw.estimatedValue, 999999999)) * 100) / 100;
+    proposals.push({
+      kind: "demand",
+      title,
+      client: clientName,
+      service,
+      responsible: clean(raw.responsible, 200),
+      priority: raw.priority,
+      dueDate: isDate(raw.dueDate) ? raw.dueDate : "",
+      estimatedValue: Number.isFinite(value) ? value : 0,
+      description: clean(raw.description, 8e3),
+      customValues: customValues2,
+      missing: demandFields.filter((f3) => f3.required && customValues2[f3.id] === void 0).map((f3) => f3.label)
+    });
+  }
+  return { reply: parsed.reply, proposals };
+}
+var PROPOSAL_RULES = `
+Responda SEMPRE no formato JSON pedido. "reply" \xE9 o texto para o gestor, em at\xE9 6 frases.
+Se o gestor pedir para cadastrar, registrar, criar ou adicionar clientes ou demandas, devolva cada registro em "proposals". Voc\xEA N\xC3O grava nada: diga no reply que s\xE3o propostas e que o gestor precisa confirmar cada uma. Nunca diga que salvou, cadastrou ou criou.
+Se n\xE3o houver pedido de cadastro, "proposals" \xE9 uma lista vazia.
+Use somente o que o gestor escreveu. Campo n\xE3o informado fica vazio: texto "", valor 0, data "". N\xE3o invente e-mail, prazo, valor, respons\xE1vel nem cliente.
+kind "client": preencha clientName e, se informado, email. Os outros campos ficam vazios. N\xE3o proponha cliente que j\xE1 est\xE1 em context.clients.
+kind "demand": clientName \xE9 o cliente da demanda; title \xE9 o nome curto do pedido; service deve ser exatamente um dos context.configuration.services ou ""; responsible \xE9 quem executa; priority \xE9 urgente, alta, media ou baixa (use media se n\xE3o informado); dueDate no formato AAAA-MM-DD ou "".
+customValues s\xF3 aceita fieldId listado em context.configuration.demandFields; em campo do tipo select use exatamente uma das options.
+No m\xE1ximo 8 propostas por resposta. Se o pedido tiver mais, proponha as 8 primeiras e avise no reply.`;
 
 // artifacts/api-server/src/middlewares/rate-limit.ts
 function rateLimit(options) {
@@ -92735,15 +92858,23 @@ router3.post("/chat/messages", rateLimit({ windowMs: 6e4, max: 12 }), async (req
     demands: workspace.demands.slice(0, 20).map((d) => ({ id: d.id, title: d.title, status: d.status, priority: d.priority, dueDate: d.dueDate, responsible: d.responsible })),
     projects: workspace.projects.slice(0, 20).map((p) => ({ id: p.id, name: p.name, phase: p.phase, progress: p.progress, dueDate: p.dueDate, health: p.health, taskCount: p.tasks.length, tasks: p.tasks.filter((t2) => !t2.done).slice(0, 5).map((t2) => ({ id: t2.id, title: t2.title.slice(0, 100), dueDate: t2.dueDate })) })),
     financialEntries: workspace.financialEntries.slice(0, 20).map((f3) => ({ id: f3.id, projectId: f3.projectId, type: f3.type, amount: f3.amount, status: f3.status, dueDate: f3.dueDate })),
+    clients: workspace.clients.slice(0, 50).map((c) => c.name),
+    configuration: workspace.configuration ? { services: workspace.configuration.services, demandFields: workspace.configuration.fields.filter((f3) => f3.entity === "demand").map((f3) => ({ fieldId: f3.id, label: f3.label, type: f3.type, required: f3.required, options: f3.options })) } : null,
     scope: "Totais cobrem todos os registros; detalhes limitados aos primeiros 20 por m\xF3dulo e at\xE9 5 tarefas pendentes por caso. Se faltarem detalhes, informe a limita\xE7\xE3o. Sem consulta jur\xEDdica externa."
   };
-  const ai = await askDomusAi(content, context, previous.rows.reverse().map((m2) => ({ ...m2, content: m2.content.slice(0, 1e3) })), (usage) => recordUsage(companyId, userId, "chat", usage));
+  const ai = await askDomusAiWithProposals(content, context, previous.rows.reverse().map((m2) => ({ ...m2, content: m2.content.slice(0, 1e3) })), PROPOSAL_RULES, chatReplyJsonSchema, (usage) => recordUsage(companyId, userId, "chat", usage));
+  let parsed;
+  try {
+    parsed = parseChatReply(ai.text, workspace.configuration, workspace.clients);
+  } catch {
+    throw new AiUnavailableError(new Error("Invalid chat reply"));
+  }
   const message = await transaction(async (db2) => {
     await db2.query("INSERT INTO legal_chat_messages(company_id,user_id,role,content) VALUES($1,$2,$3,$4)", [companyId, userId, "user", content]);
-    const r2 = await db2.query('INSERT INTO legal_chat_messages(company_id,user_id,role,content) VALUES($1,$2,$3,$4) RETURNING id,role,content,created_at AS "createdAt"', [companyId, userId, "assistant", ai.text]);
+    const r2 = await db2.query('INSERT INTO legal_chat_messages(company_id,user_id,role,content) VALUES($1,$2,$3,$4) RETURNING id,role,content,created_at AS "createdAt"', [companyId, userId, "assistant", parsed.reply]);
     return r2.rows[0];
   });
-  res.json({ message, usage: ai.usage });
+  res.json({ message, usage: ai.usage, proposals: parsed.proposals });
 });
 router3.delete("/chat/messages/:id", async (req, res) => {
   const id = await ensureCompany(req.user.id);
@@ -92762,11 +92893,11 @@ var chat_default = router3;
 var import_express4 = __toESM(require_express2(), 1);
 
 // artifacts/api-server/src/lib/interview.ts
-var object2 = (properties) => ({ type: "object", properties, required: Object.keys(properties), additionalProperties: false });
-var string4 = { type: "string" };
-var strings = { type: "array", items: string4 };
-var config2 = object2({ companyName: string4, summary: string4, briefing: object2({ pain: string4, intake: string4, responsibility: string4, financialNeeds: { type: "string", enum: ["receber", "pagar", "ambos", "nenhum"] } }), services: strings, stages: { type: "array", items: object2({ id: string4, label: string4 }) }, fields: { type: "array", items: object2({ id: string4, label: string4, type: { type: "string", enum: ["text", "number", "select"] }, entity: { type: "string", enum: ["demand", "project"] }, required: { type: "boolean" }, options: strings }) } });
-var schema = object2({ reply: string4, questions: strings, configuration: { anyOf: [config2, { type: "null" }] } });
+var object3 = (properties) => ({ type: "object", properties, required: Object.keys(properties), additionalProperties: false });
+var string5 = { type: "string" };
+var strings = { type: "array", items: string5 };
+var config2 = object3({ companyName: string5, summary: string5, briefing: object3({ pain: string5, intake: string5, responsibility: string5, financialNeeds: { type: "string", enum: ["receber", "pagar", "ambos", "nenhum"] } }), services: strings, stages: { type: "array", items: object3({ id: string5, label: string5 }) }, fields: { type: "array", items: object3({ id: string5, label: string5, type: { type: "string", enum: ["text", "number", "select"] }, entity: { type: "string", enum: ["demand", "project"] }, required: { type: "boolean" }, options: strings }) } });
+var schema = object3({ reply: string5, questions: strings, configuration: { anyOf: [config2, { type: "null" }] } });
 var interviewResultSchema = external_exports.object({ reply: external_exports.string().min(1).max(4e3), questions: external_exports.array(external_exports.string().min(1).max(500)).max(3), configuration: configurationSchema.nullable() });
 async function conductInterview(messages, onUsage) {
   const result = await generateAi(MANAGEMENT_RULES + `
