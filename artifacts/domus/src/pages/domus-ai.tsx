@@ -117,6 +117,63 @@ const ZERO_USAGE: SessionUsage = {
 };
 // ── Helpers ────────────────────────────────────
 
+const KNOWN_KINDS = ["client", "demand", "case", "task", "financial"];
+
+// A página nunca pode quebrar por causa do formato de uma proposta: tipo que esta
+// versão não conhece é ignorado e campo ausente recebe um valor seguro.
+function normalizeProposals(raw: unknown): Proposal[] {
+  if (!Array.isArray(raw)) return [];
+  const text = (v: unknown) => (typeof v === "string" ? v : "");
+  const number = (v: unknown) =>
+    typeof v === "number" && Number.isFinite(v) ? v : 0;
+  return raw.flatMap((item, i) => {
+    if (!item || typeof item !== "object") return [];
+    const p = item as Record<string, unknown>;
+    if (typeof p.kind !== "string" || !KNOWN_KINDS.includes(p.kind)) return [];
+    const values =
+      p.customValues && typeof p.customValues === "object"
+        ? (p.customValues as Record<string, string | number>)
+        : {};
+    return [
+      {
+        ...p,
+        name: text(p.name),
+        title: text(p.title),
+        client: text(p.client),
+        email: text(p.email),
+        service: text(p.service),
+        responsible: text(p.responsible),
+        description: text(p.description),
+        dueDate: /^\d{4}-\d{2}-\d{2}$/.test(text(p.dueDate))
+          ? text(p.dueDate)
+          : "",
+        priority: ["urgente", "alta", "media", "baixa"].includes(
+          text(p.priority),
+        )
+          ? p.priority
+          : "media",
+        estimatedValue: number(p.estimatedValue),
+        budget: number(p.budget),
+        amount: number(p.amount),
+        type: p.type === "pagar" ? "pagar" : "receber",
+        settled: p.settled === true,
+        category: text(p.category),
+        clientOrSupplier: text(p.clientOrSupplier),
+        fromDemand: p.fromDemand === true,
+        demandId: text(p.demandId),
+        projectId: text(p.projectId),
+        caseName: text(p.caseName),
+        customValues: values,
+        missing: Array.isArray(p.missing)
+          ? p.missing.filter((m): m is string => typeof m === "string")
+          : [],
+        key: `${Date.now()}-${i}`,
+        status: "pendente",
+      } as unknown as Proposal,
+    ];
+  });
+}
+
 function now(offsetMin = 0) {
   const d = new Date(Date.now() - offsetMin * 60000);
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -783,15 +840,12 @@ export default function DomusAIPage() {
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "ai",
-        text: body.message.content,
+        text:
+          typeof body?.message?.content === "string"
+            ? body.message.content
+            : "Resposta recebida.",
         timestamp: now(),
-        proposals: Array.isArray(body.proposals)
-          ? body.proposals.map((p: RawProposal, i: number) => ({
-              ...p,
-              key: `${Date.now()}-${i}`,
-              status: "pendente" as ProposalStatus,
-            }))
-          : [],
+        proposals: normalizeProposals(body.proposals),
       };
       setMessages((prev) => [...prev, aiMsg]);
 
