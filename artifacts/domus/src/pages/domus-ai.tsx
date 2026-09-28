@@ -41,7 +41,53 @@ interface DemandProposal {
   missing: string[];
 }
 
-type Proposal = (ClientProposal | DemandProposal) & {
+interface CaseProposal {
+  kind: "case";
+  fromDemand: boolean;
+  demandId: string;
+  name: string;
+  client: string;
+  service: string;
+  responsible: string;
+  dueDate: string;
+  budget: number;
+  description: string;
+  customValues: Record<string, string | number>;
+  missing: string[];
+}
+
+interface TaskProposal {
+  kind: "task";
+  title: string;
+  description: string;
+  responsible: string;
+  dueDate: string;
+  projectId: string;
+  caseName: string;
+}
+
+interface FinancialProposal {
+  kind: "financial";
+  type: "receber" | "pagar";
+  description: string;
+  clientOrSupplier: string;
+  amount: number;
+  dueDate: string;
+  settled: boolean;
+  category: string;
+  projectId: string;
+  caseName: string;
+  missing: string[];
+}
+
+type RawProposal =
+  | ClientProposal
+  | DemandProposal
+  | CaseProposal
+  | TaskProposal
+  | FinancialProposal;
+
+type Proposal = RawProposal & {
   key: string;
   status: ProposalStatus;
   error?: string;
@@ -79,11 +125,12 @@ function now(offsetMin = 0) {
 const WELCOME_MESSAGE: Message = {
   id: "welcome",
   role: "ai",
-  text: "Olá! Sou a Domus AI. Posso consultar um resumo dos seus casos, demandas e financeiro, e também preparar o cadastro de clientes e demandas: você descreve, eu proponho, e nada é salvo sem a sua confirmação. Não substituo a análise jurídica nem calculo prazos processuais. O que você quer organizar?",
+  text: "Olá! Sou a Domus AI. Posso consultar um resumo do escritório e preparar cadastros: cliente, demanda, caso, tarefa e lançamento financeiro. Você descreve, eu proponho, e nada é salvo sem a sua confirmação. Depois você abre e edita cada registro na tela. Não substituo a análise jurídica nem calculo prazos processuais. O que você quer organizar?",
   timestamp: now(),
 };
 
 const SUGGESTIONS = [
+  "O que tenho a receber e qual caso precisa de atenção?",
   "Como devo priorizar minhas demandas essa semana?",
   "O que olhar antes de fechar o mês no financeiro?",
   "Quais casos precisam de atenção e por quê?",
@@ -200,17 +247,33 @@ function ProposalCard({
   disabled,
   onConfirm,
   onDiscard,
+  onOpen,
 }: {
   proposal: Proposal;
   fieldLabels: Record<string, string>;
   disabled: boolean;
   onConfirm: () => void;
   onDiscard: () => void;
+  onOpen: (href: string) => void;
 }) {
-  const isClient = proposal.kind === "client";
-  const details: [string, string][] = isClient
-    ? [["E-mail", proposal.email]]
-    : [
+  const customDetails = (values: Record<string, string | number>) =>
+    Object.entries(values).map(
+      ([id, value]) => [fieldLabels[id] ?? id, String(value)] as [string, string],
+    );
+  let heading: string;
+  let title: string;
+  let details: [string, string][];
+  let confirmLabel = "Confirmar cadastro";
+  switch (proposal.kind) {
+    case "client":
+      heading = "Proposta de cliente";
+      title = proposal.name;
+      details = [["E-mail", proposal.email]];
+      break;
+    case "demand":
+      heading = "Proposta de demanda";
+      title = proposal.title;
+      details = [
         ["Cliente", proposal.client],
         ["Serviço", proposal.service],
         ["Responsável", proposal.responsible],
@@ -220,11 +283,80 @@ function ProposalCard({
           "Honorários estimados",
           proposal.estimatedValue ? formatCurrency(proposal.estimatedValue) : "",
         ],
-        ...Object.entries(proposal.customValues).map(
-          ([id, value]) => [fieldLabels[id] ?? id, String(value)] as [string, string],
-        ),
+        ...customDetails(proposal.customValues),
       ];
-  const missing = isClient ? [] : proposal.missing;
+      break;
+    case "case":
+      heading = "Proposta de caso";
+      title = proposal.name;
+      details = [
+        ["Cliente", proposal.client],
+        [
+          "Origem",
+          proposal.fromDemand
+            ? "demanda aprovada e transformada em caso"
+            : "caso novo, sem demanda",
+        ],
+        ["Serviço", proposal.service],
+        ["Responsável", proposal.responsible],
+        ["Prazo", proposal.dueDate ? formatDate(proposal.dueDate) : ""],
+        [
+          "Honorários previstos",
+          proposal.budget ? formatCurrency(proposal.budget) : "",
+        ],
+        ...customDetails(proposal.customValues),
+      ];
+      confirmLabel = proposal.fromDemand ? "Aprovar e criar caso" : "Criar caso";
+      break;
+    case "task":
+      heading = "Proposta de tarefa";
+      title = proposal.title;
+      details = [
+        ["Caso", proposal.caseName],
+        ["Responsável", proposal.responsible],
+        ["Prazo", proposal.dueDate ? formatDate(proposal.dueDate) : ""],
+        ["Descrição", proposal.description],
+      ];
+      confirmLabel = "Criar tarefa";
+      break;
+    case "financial":
+      heading =
+        proposal.type === "receber"
+          ? "Proposta de conta a receber"
+          : "Proposta de conta a pagar";
+      title = proposal.description;
+      details = [
+        [
+          proposal.type === "receber" ? "Cliente" : "Fornecedor",
+          proposal.clientOrSupplier,
+        ],
+        ["Valor", proposal.amount ? formatCurrency(proposal.amount) : ""],
+        ["Vencimento", proposal.dueDate ? formatDate(proposal.dueDate) : ""],
+        [
+          "Situação",
+          proposal.settled
+            ? proposal.type === "receber"
+              ? "Já recebido"
+              : "Já pago"
+            : "Pendente",
+        ],
+        ["Categoria", proposal.category],
+        ["Caso", proposal.caseName],
+      ];
+      confirmLabel = "Confirmar lançamento";
+      break;
+  }
+  const missing =
+    proposal.kind === "client" || proposal.kind === "task"
+      ? []
+      : proposal.missing;
+  const screen: Record<Proposal["kind"], [string, string]> = {
+    client: ["/clientes", "Abrir Clientes"],
+    demand: ["/demandas", "Abrir Demandas"],
+    case: ["/projetos", "Abrir Casos"],
+    task: ["/projetos", "Abrir Casos"],
+    financial: ["/financeiro", "Abrir Financeiro"],
+  };
   const confirmed = proposal.status === "confirmada";
 
   return (
@@ -235,10 +367,10 @@ function ProposalCard({
       )}
     >
       <p className="text-[11px] font-medium uppercase tracking-wide text-primary">
-        {isClient ? "Proposta de cliente" : "Proposta de demanda"}
+        {heading}
       </p>
       <p className="mt-0.5 font-semibold text-foreground">
-        {isClient ? proposal.name : proposal.title}
+        {title}
       </p>
       <dl className="mt-2 grid gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
         {details
@@ -253,7 +385,7 @@ function ProposalCard({
       {missing.length > 0 && !confirmed && (
         <p className="mt-2 text-xs text-destructive">
           Falta informar: {missing.join(", ")}. Diga no chat ou cadastre pela
-          tela de Demandas.
+          tela.
         </p>
       )}
       {proposal.status === "erro" && (
@@ -263,10 +395,19 @@ function ProposalCard({
       )}
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {confirmed ? (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
-            <Check className="h-3.5 w-3.5" />
-            Salvo no escritório
-          </span>
+          <>
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+              <Check className="h-3.5 w-3.5" />
+              Salvo no escritório
+            </span>
+            <button
+              type="button"
+              onClick={() => onOpen(screen[proposal.kind][0])}
+              className="text-xs text-muted-foreground underline hover:text-foreground"
+            >
+              {screen[proposal.kind][1]} para ver e editar
+            </button>
+          </>
         ) : (
           <>
             <button
@@ -276,7 +417,7 @@ function ProposalCard({
               className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Check className="h-3.5 w-3.5" />
-              {proposal.status === "salvando" ? "Salvando…" : "Confirmar cadastro"}
+              {proposal.status === "salvando" ? "Salvando…" : confirmLabel}
             </button>
             <button
               type="button"
@@ -351,10 +492,8 @@ function SessionUsagePanel({
 export default function DomusAIPage() {
   const { state, replace } = useWorkspace();
   // Espelhos do estado mais recente, para confirmar várias propostas em sequência.
-  const revisionRef = useRef(state.revision);
-  const clientsRef = useRef(state.clients);
-  revisionRef.current = state.revision;
-  clientsRef.current = state.clients;
+  const workspaceRef = useRef(state);
+  workspaceRef.current = state;
   const [saving, setSaving] = useState(false);
   const fieldLabels = Object.fromEntries(
     (state.configuration?.fields ?? []).map((f) => [f.id, f.label]),
@@ -420,12 +559,22 @@ export default function DomusAIPage() {
   }
 
   // Grava pela mesma rota dos formulários: o servidor valida tudo de novo.
+  async function send(action: { type: string; payload: unknown }) {
+    const workspace = await api<Workspace>("/api/workspace/actions", {
+      ...action,
+      revision: workspaceRef.current.revision,
+    });
+    workspaceRef.current = workspace;
+    replace(workspace);
+  }
+
   async function saveProposal(p: Proposal) {
     const same = (a: string, b: string) =>
       a.trim().toLowerCase() === b.trim().toLowerCase();
-    let action: { type: string; payload: unknown };
+    const office = workspaceRef.current;
+
     if (p.kind === "client") {
-      action = {
+      await send({
         type: "CREATE_CLIENT",
         payload: {
           id: crypto.randomUUID(),
@@ -433,10 +582,13 @@ export default function DomusAIPage() {
           email: p.email,
           phone: "",
         },
-      };
-    } else {
-      const existing = clientsRef.current.find((c) => same(c.name, p.client));
-      action = {
+      });
+      return;
+    }
+
+    if (p.kind === "demand") {
+      const existing = office.clients.find((c) => same(c.name, p.client));
+      await send({
         type: "CREATE_DEMAND",
         payload: {
           id: crypto.randomUUID(),
@@ -457,15 +609,111 @@ export default function DomusAIPage() {
           files: [],
           customValues: p.customValues,
         },
-      };
+      });
+      return;
     }
-    const workspace = await api<Workspace>("/api/workspace/actions", {
-      ...action,
-      revision: revisionRef.current,
+
+    const findCase = (projectId: string, caseName: string) =>
+      workspaceRef.current.projects.find((x) => x.id === projectId) ??
+      workspaceRef.current.projects.find(
+        (x) => caseName && same(x.name, caseName),
+      );
+
+    if (p.kind === "case") {
+      if (!p.fromDemand) {
+        const existing = office.clients.find((c) => same(c.name, p.client));
+        await send({
+          type: "CREATE_PROJECT",
+          payload: {
+            id: `P-${crypto.randomUUID()}`,
+            name: p.name,
+            client: existing?.name ?? p.client,
+            ...(existing ? { clientId: existing.id } : {}),
+            ...(p.service ? { service: p.service } : {}),
+            responsible: p.responsible,
+            phase: office.configuration?.stages[0]?.id ?? "",
+            progress: 0,
+            dueDate: p.dueDate,
+            budget: p.budget,
+            plannedCost: 0,
+            realizedCost: 0,
+            health: "saudavel",
+            description: p.description,
+            tasks: [],
+            phases: [],
+            history: [],
+            customValues: p.customValues,
+          },
+        });
+        return;
+      }
+      const demand =
+        office.demands.find((d) => d.id === p.demandId) ??
+        office.demands.find(
+          (d) => same(d.title, p.name) && same(d.client, p.client),
+        );
+      if (!demand) throw new Error(`Confirme antes a demanda “${p.name}”.`);
+      if (demand.projectId) throw new Error("Esta demanda já virou caso.");
+      // Confirmar o cartão é a aprovação do gestor; a conversão exige demanda aprovada.
+      if (demand.status !== "aprovada")
+        await send({
+          type: "UPDATE_DEMAND",
+          payload: { id: demand.id, updates: { status: "aprovada" } },
+        });
+      await send({
+        type: "CONVERT_DEMAND",
+        payload: { demandId: demand.id, customValues: p.customValues },
+      });
+      return;
+    }
+
+    if (p.kind === "task") {
+      const target = findCase(p.projectId, p.caseName);
+      if (!target) throw new Error(`Confirme antes o caso “${p.caseName}”.`);
+      await send({
+        type: "UPDATE_PROJECT",
+        payload: {
+          id: target.id,
+          updates: {
+            tasks: [
+              ...target.tasks,
+              {
+                id: crypto.randomUUID(),
+                title: p.title,
+                description: p.description,
+                responsible: p.responsible,
+                dueDate: p.dueDate,
+                done: false,
+              },
+            ],
+          },
+        },
+      });
+      return;
+    }
+
+    const project =
+      p.projectId || p.caseName ? findCase(p.projectId, p.caseName) : undefined;
+    if ((p.projectId || p.caseName) && !project)
+      throw new Error(`Confirme antes o caso “${p.caseName}”.`);
+    await send({
+      type: "CREATE_FINANCIAL",
+      payload: {
+        id: crypto.randomUUID(),
+        type: p.type,
+        description: p.description,
+        clientOrSupplier: p.clientOrSupplier,
+        ...(project ? { projectId: project.id } : {}),
+        amount: p.amount,
+        dueDate: p.dueDate,
+        status: p.settled
+          ? p.type === "receber"
+            ? "recebido"
+            : "pago"
+          : "pendente",
+        category: p.category,
+      },
     });
-    revisionRef.current = workspace.revision;
-    clientsRef.current = workspace.clients;
-    replace(workspace);
   }
 
   async function confirmProposals(messageId: string, list: Proposal[]) {
@@ -485,8 +733,7 @@ export default function DomusAIPage() {
           // Depois de um erro, busca a revisão atual antes de tentar a próxima.
           try {
             const fresh = await api<Workspace>("/api/workspace");
-            revisionRef.current = fresh.revision;
-            clientsRef.current = fresh.clients;
+            workspaceRef.current = fresh;
             replace(fresh);
           } catch {
             break;
@@ -539,7 +786,7 @@ export default function DomusAIPage() {
         text: body.message.content,
         timestamp: now(),
         proposals: Array.isArray(body.proposals)
-          ? body.proposals.map((p: ClientProposal | DemandProposal, i: number) => ({
+          ? body.proposals.map((p: RawProposal, i: number) => ({
               ...p,
               key: `${Date.now()}-${i}`,
               status: "pendente" as ProposalStatus,
@@ -618,7 +865,9 @@ export default function DomusAIPage() {
           const ready = proposals.filter(
             (p) =>
               p.status !== "confirmada" &&
-              (p.kind === "client" || p.missing.length === 0),
+              (p.kind === "client" ||
+                p.kind === "task" ||
+                p.missing.length === 0),
           );
           return (
             <div key={msg.id} className="space-y-3">
@@ -633,6 +882,7 @@ export default function DomusAIPage() {
                       disabled={saving}
                       onConfirm={() => void confirmProposals(msg.id, [p])}
                       onDiscard={() => patchProposal(msg.id, p.key, null)}
+                      onOpen={navigate}
                     />
                   ))}
                   {ready.length > 1 && (
@@ -691,7 +941,7 @@ export default function DomusAIPage() {
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Pergunte ou peça um cadastro: clientes, demandas…"
+              placeholder="Pergunte ou peça um cadastro: cliente, demanda, caso, tarefa, lançamento…"
               className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
               disabled={typing || historyLoading}
               aria-label="Pergunta à Domus AI"

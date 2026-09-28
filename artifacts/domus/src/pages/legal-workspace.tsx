@@ -6,18 +6,18 @@ import {
   type FormEvent,
 } from "react";
 import { Link } from "wouter";
-import { Plus, X, CheckCircle2, ArrowRight, Scale } from "lucide-react";
+import { Plus, X, CheckCircle2, ArrowRight } from "lucide-react";
 import { useWorkspace, useFinancialKPIs } from "@/data/store";
-import type { Demand, Project, FinancialEntry, Client } from "@/data/types";
+import type { Demand, FinancialEntry, Client } from "@/data/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export const inputClass =
   "w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary";
 export const buttonClass =
   "inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50";
-const secondary =
+export const secondary =
   "rounded-md border border-border px-3 py-2 text-sm hover:bg-secondary disabled:opacity-50";
-const panel = "rounded-xl border border-border bg-card p-5";
+export const panel = "rounded-xl border border-border bg-card p-5";
 const priorities: Record<string, string> = {
   baixa: "Baixa",
   media: "Média",
@@ -70,21 +70,23 @@ export function Page({
     </div>
   );
 }
-function Empty({ children }: { children: ReactNode }) {
+export function Empty({ children }: { children: ReactNode }) {
   return (
     <div className="border border-dashed border-border rounded-xl p-10 text-center text-muted-foreground">
       {children}
     </div>
   );
 }
-function Modal({
+export function Modal({
   title,
   children,
   close,
+  wide = false,
 }: {
   title: string;
   children: ReactNode;
   close: () => void;
+  wide?: boolean;
 }) {
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -126,7 +128,7 @@ function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-xl max-h-[90vh] overflow-auto bg-card rounded-xl border border-border p-6"
+        className={`w-full ${wide ? "max-w-4xl" : "max-w-xl"} max-h-[90vh] overflow-auto bg-card rounded-xl border border-border p-6`}
       >
         <header className="flex justify-between items-center mb-5">
           <h2 className="text-lg font-semibold">{title}</h2>
@@ -139,7 +141,7 @@ function Modal({
     </div>
   );
 }
-function ErrorLine({ error }: { error: string }) {
+export function ErrorLine({ error }: { error: string }) {
   return error ? (
     <p
       role="alert"
@@ -149,7 +151,7 @@ function ErrorLine({ error }: { error: string }) {
     </p>
   ) : null;
 }
-function CustomFields({
+export function CustomFields({
   entity,
   values,
   change,
@@ -432,6 +434,12 @@ export function Demands() {
   }
   async function convert(d: Demand) {
     try {
+      // Criar o caso é a aprovação: demanda ainda não aprovada é aprovada antes de converter.
+      if (d.status !== "aprovada")
+        await dispatch({
+          type: "UPDATE_DEMAND",
+          payload: { id: d.id, updates: { status: "aprovada" } },
+        });
       await dispatch({
         type: "CONVERT_DEMAND",
         payload: { demandId: d.id, customValues: caseValues },
@@ -445,7 +453,7 @@ export function Demands() {
   return (
     <Page
       title="Demandas"
-      subtitle="Do primeiro contato à contratação. Aprove uma demanda para criar seu caso."
+      subtitle="Do primeiro contato à contratação. Uma demanda aprovada vira caso."
       action={
         <button
           disabled={!state.clients.length}
@@ -504,18 +512,21 @@ export function Demands() {
                   >
                     Editar
                   </button>
-                  {d.status === "aprovada" && (
-                    <button
-                      disabled={busy}
-                      className={buttonClass}
-                      onClick={() => {
-                        setConverting(d);
-                        setCaseValues({});
-                      }}
-                    >
-                      Criar caso
-                    </button>
-                  )}
+                  {!d.projectId &&
+                    !["convertida", "cancelada"].includes(d.status) && (
+                      <button
+                        disabled={busy}
+                        className={buttonClass}
+                        onClick={() => {
+                          setConverting(d);
+                          setCaseValues({});
+                        }}
+                      >
+                        {d.status === "aprovada"
+                          ? "Criar caso"
+                          : "Aprovar e criar caso"}
+                      </button>
+                    )}
                   {d.projectId && (
                     <Link className={secondary} href="/projetos">
                       Ver casos
@@ -696,268 +707,6 @@ export function Demands() {
             />
             <button disabled={busy} className={buttonClass}>
               Salvar demanda
-            </button>
-          </form>
-        </Modal>
-      )}
-    </Page>
-  );
-}
-export function Cases() {
-  const { state, dispatch, busy } = useWorkspace();
-  const [id, setId] = useState<string | null>(null);
-  const [edit, setEdit] = useState<Project | null>(null);
-  const [error, setError] = useState("");
-  const [task, setTask] = useState({
-    id: "",
-    title: "",
-    responsible: "",
-    dueDate: "",
-    done: false,
-  });
-  const selected = state.projects.find((p) => p.id === id);
-  async function update(p: Project, updates: Partial<Project>) {
-    const { demandId, ...editable } = updates;
-    await dispatch({
-      type: "UPDATE_PROJECT",
-      payload: { id: p.id, updates: editable },
-    });
-  }
-  async function saveTask(e: FormEvent) {
-    e.preventDefault();
-    if (!selected) return;
-    try {
-      await update(selected, {
-        tasks: task.id
-          ? selected.tasks.map((t) => (t.id === task.id ? task : t))
-          : [...selected.tasks, { ...task, id: crypto.randomUUID() }],
-      });
-      setTask({ id: "", title: "", responsible: "", dueDate: "", done: false });
-      setError("");
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }
-  return (
-    <Page
-      title="Casos e serviços"
-      subtitle="Etapas, responsáveis, tarefas e financeiro de cada trabalho."
-      action={
-        <Link href="/demandas" className={buttonClass}>
-          Criar a partir de demanda
-        </Link>
-      }
-    >
-      <ErrorLine error={error} />
-      <div className="grid lg:grid-cols-2 gap-4">
-        {state.projects.map((p) => (
-          <section className={panel} key={p.id}>
-            <div className="flex gap-3 items-start">
-              <Scale className="text-primary shrink-0" size={20} />
-              <div className="flex-1">
-                <p className="text-xs text-primary mb-1">
-                  {state.configuration?.stages.find((s) => s.id === p.phase)
-                    ?.label || p.phase}
-                </p>
-                <h2 className="font-semibold">{p.name}</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {p.client} · {p.responsible || "Sem responsável"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-3">
-                  {p.tasks.filter((t) => t.done).length}/{p.tasks.length}{" "}
-                  tarefas concluídas ·{" "}
-                  {p.dueDate ? formatDate(p.dueDate) : "Prazo pendente"}
-                </p>
-                <div className="flex gap-2 mt-4">
-                  <button
-                    className={secondary}
-                    onClick={() => {
-                      setId(p.id);
-                      setTask({
-                        id: "",
-                        title: "",
-                        responsible: "",
-                        dueDate: "",
-                        done: false,
-                      });
-                    }}
-                  >
-                    Tarefas
-                  </button>
-                  <button
-                    className={secondary}
-                    onClick={() => setEdit({ ...p })}
-                  >
-                    Editar caso
-                  </button>
-                </div>
-              </div>
-            </div>
-          </section>
-        ))}
-      </div>
-      {!state.projects.length && (
-        <Empty>Aprove uma demanda e clique em “Criar caso” para iniciar.</Empty>
-      )}
-      {selected && (
-        <Modal title={`Tarefas · ${selected.name}`} close={() => setId(null)}>
-          <ErrorLine error={error} />
-          <div className="space-y-3 mb-6">
-            {selected.tasks.map((t) => (
-              <div
-                key={t.id}
-                className="flex gap-3 items-center border-b border-border pb-3"
-              >
-                <input
-                  aria-label={`Concluir ${t.title}`}
-                  type="checkbox"
-                  checked={t.done}
-                  disabled={busy}
-                  onChange={async () => {
-                    try {
-                      await dispatch({
-                        type: "TOGGLE_PROJECT_TASK",
-                        payload: { projectId: selected.id, taskId: t.id },
-                      });
-                    } catch (e) {
-                      setError((e as Error).message);
-                    }
-                  }}
-                />
-                <div className="flex-1">
-                  <p
-                    className={
-                      t.done ? "line-through text-muted-foreground" : ""
-                    }
-                  >
-                    {t.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {t.responsible} {t.dueDate && `· ${formatDate(t.dueDate)}`}
-                  </p>
-                </div>
-                <button
-                  className="text-sm text-primary"
-                  onClick={() => setTask({ ...t, dueDate: t.dueDate || "" })}
-                >
-                  Editar
-                </button>
-              </div>
-            ))}
-          </div>
-          <form onSubmit={saveTask} className="space-y-3">
-            <h3 className="font-medium">
-              {task.id ? "Editar tarefa" : "Nova tarefa"}
-            </h3>
-            <Field label="O que precisa ser feito? *">
-              <input
-                required
-                className={inputClass}
-                value={task.title}
-                onChange={(e) => setTask({ ...task, title: e.target.value })}
-              />
-            </Field>
-            <Field label="Responsável">
-              <input
-                className={inputClass}
-                value={task.responsible}
-                onChange={(e) =>
-                  setTask({ ...task, responsible: e.target.value })
-                }
-              />
-            </Field>
-            <Field label="Prazo">
-              <input
-                type="date"
-                className={inputClass}
-                value={task.dueDate}
-                onChange={(e) => setTask({ ...task, dueDate: e.target.value })}
-              />
-            </Field>
-            <button disabled={busy} className={buttonClass}>
-              Salvar tarefa
-            </button>
-          </form>
-        </Modal>
-      )}
-      {edit && (
-        <Modal title="Editar caso" close={() => setEdit(null)}>
-          <form
-            className="space-y-4"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              try {
-                await update(edit, edit);
-                setEdit(null);
-                setError("");
-              } catch (e) {
-                setError((e as Error).message);
-              }
-            }}
-          >
-            <ErrorLine error={error} />
-            <Field label="Nome *">
-              <input
-                required
-                className={inputClass}
-                value={edit.name}
-                onChange={(e) => setEdit({ ...edit, name: e.target.value })}
-              />
-            </Field>
-            <Field label="Etapa">
-              <select
-                className={inputClass}
-                value={edit.phase}
-                onChange={(e) => setEdit({ ...edit, phase: e.target.value })}
-              >
-                {state.configuration?.stages.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Responsável">
-              <input
-                className={inputClass}
-                value={edit.responsible}
-                onChange={(e) =>
-                  setEdit({ ...edit, responsible: e.target.value })
-                }
-              />
-            </Field>
-            <Field label="Prazo">
-              <input
-                type="date"
-                className={inputClass}
-                value={edit.dueDate}
-                onChange={(e) => setEdit({ ...edit, dueDate: e.target.value })}
-              />
-            </Field>
-            <Field label="Honorários previstos (R$)">
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                className={inputClass}
-                value={edit.budget}
-                onChange={(e) =>
-                  setEdit({ ...edit, budget: Number(e.target.value) })
-                }
-              />
-            </Field>
-            <p className="text-sm text-muted-foreground">
-              Despesas previstas: {formatCurrency(edit.plannedCost)} · pagas:{" "}
-              {formatCurrency(edit.realizedCost)}. Calculadas pelos lançamentos
-              vinculados a este caso.
-            </p>
-            <CustomFields
-              entity="project"
-              values={edit.customValues || {}}
-              change={(customValues) => setEdit({ ...edit, customValues })}
-            />
-            <button disabled={busy} className={buttonClass}>
-              Salvar caso
             </button>
           </form>
         </Modal>

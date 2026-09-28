@@ -90,7 +90,7 @@ export async function applyWorkspaceAction(db:SqlClient,companyId:string,body:an
  case 'CONVERT_DEMAND':{
   const d=await existing(db,'legal_demands',companyId,p.demandId);
   if(d.status!=='aprovada'||d.projectId)throw new WorkspaceError(409,'A demanda precisa estar aprovada e ainda não convertida.');
-  const project={id:`P-${randomUUID()}`,name:d.title,client:d.client,clientId:d.clientId,service:d.service,responsible:d.responsible??'',phase:config.stages[0]!.id,progress:0,dueDate:d.dueDate,budget:d.estimatedValue,plannedCost:0,realizedCost:0,health:'saudavel',demandId:d.id,tasks:[],phases:[],history:[],customValues:p.customValues??{}};
+  const project={id:`P-${randomUUID()}`,name:d.title,client:d.client,clientId:d.clientId,service:d.service,responsible:d.responsible??'',phase:config.stages[0]!.id,progress:0,dueDate:d.dueDate,budget:d.estimatedValue,plannedCost:0,realizedCost:0,health:'saudavel',description:d.description??'',demandId:d.id,tasks:[],phases:[],history:[],customValues:p.customValues??{}};
   await writeProject(db,companyId,project,config,true);
   await writeDemand(db,companyId,{...d,status:'convertida',projectId:project.id},config,false);break;
  }

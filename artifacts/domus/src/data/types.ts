@@ -74,6 +74,7 @@ export interface ProjectTask {
   responsible: string;
   done: boolean;
   dueDate?: string;
+  description?: string;
 }
 
 export interface ProjectPhaseEntry {
@@ -99,6 +100,7 @@ export interface Project {
   realizedCost: number; // custo realizado
   health: ProjectHealth;
   healthNote?: string;
+  description?: string;
   demandId?: string; // origin demand
   tasks: ProjectTask[];
   phases: ProjectPhaseEntry[];
