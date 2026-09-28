@@ -6,13 +6,19 @@ import { configurationSchema,WorkspaceError } from '../lib/workspace-validation'
 import { conductInterview } from '../lib/interview';
 import { rateLimit } from '../middlewares/rate-limit';
 import { AiRateLimitedError,AiUnavailableError,MissingApiKeyError,MissingModelError } from '../lib/domus-ai-errors';
+import { logger } from '../lib/logger';
+import OpenAI from 'openai';
 import type { Request,Response,NextFunction } from 'express';
-export function handleWorkspaceError(error:unknown,_req:Request,res:Response,next:NextFunction){
+export function handleWorkspaceError(error:unknown,req:Request,res:Response,next:NextFunction){
  if(error instanceof WorkspaceError){res.status(error.status).json({error:error.message});return;}
  if(error instanceof z.ZodError){res.status(400).json({error:error.issues.map(i=>i.message).join(' ').slice(0,500)});return;}
  if(error instanceof MissingApiKeyError||error instanceof MissingModelError){res.status(503).json({error:'IA não configurada neste ambiente.'});return;}
  if(error instanceof AiRateLimitedError){res.status(429).json({error:'IA temporariamente ocupada. Tente novamente mais tarde.'});return;}
- if(error instanceof AiUnavailableError||error instanceof SyntaxError){res.status(502).json({error:'A IA não retornou uma resposta válida. Sua configuração não foi alterada.'});return;}
+ if(error instanceof AiUnavailableError||error instanceof SyntaxError){
+  const cause=(error instanceof AiUnavailableError?error.cause:error) as {status?:unknown;code?:unknown;message?:unknown}|undefined;
+  logger.warn({event:'ai_unavailable',route:req.path,causeName:cause?.constructor?.name,causeStatus:typeof cause?.status==='number'?cause.status:undefined,causeCode:cause?.code??undefined,causeMessage:typeof cause?.message==='string'?cause.message.slice(0,300):undefined},'AI unavailable');
+  if(cause instanceof OpenAI.APIConnectionTimeoutError){res.status(504).json({error:'A IA demorou demais para responder. Tente de novo em instantes.'});return;}
+  res.status(502).json({error:'A IA não retornou uma resposta válida. Sua configuração não foi alterada.'});return;}
  if((error as {code?:string})?.code==='23505'){res.status(409).json({error:'Este registro já existe. Atualize os dados antes de continuar.'});return;}
  next(error);
 }
@@ -35,7 +41,10 @@ router.post('/onboarding/interview',rateLimit({windowMs:60000,max:6}),async(req,
  await reserveAiQuota(id,req.user!.plan);
  const ai=await conductInterview(messages,usage=>recordUsage(id,req.user!.id,'onboarding',usage));
  let parsed;
- try{parsed=ai.parse();}catch{throw new AiUnavailableError(new Error('Invalid configuration'));}
+ try{parsed=ai.parse();}catch(error){
+  logger.warn({event:'interview_invalid_configuration',issues:error instanceof z.ZodError?error.issues.map(i=>({path:i.path.join('.'),message:i.message})):undefined,errorName:error instanceof z.ZodError?undefined:(error as Error)?.name},'Interview returned invalid configuration');
+  throw new AiUnavailableError(new Error('Invalid configuration'));
+ }
  const updated=await pool.query('UPDATE legal_companies SET interview=$2,proposal=$3,revision=revision+1 WHERE id=$1 AND revision=$4 RETURNING id',[id,JSON.stringify([...messages,{role:'assistant',content:parsed.reply,questions:parsed.questions}]),parsed.configuration,r.rows[0].revision]);
  if(!updated.rows.length)throw new WorkspaceError(409,'Outra operação alterou o escritório. Atualize e tente novamente.');
  res.json({...parsed,usage:ai.result.usage});
