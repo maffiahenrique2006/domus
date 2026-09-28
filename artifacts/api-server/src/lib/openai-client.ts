@@ -12,7 +12,7 @@ export function getOpenAIClient(): OpenAI {
   }
 
   if (!cachedClient || cachedKey !== apiKey) {
-    cachedClient = new OpenAI({ apiKey, timeout: 20_000, maxRetries: 0 });
+    cachedClient = new OpenAI({ apiKey, timeout: 50_000, maxRetries: 0 });
     cachedKey = apiKey;
   }
 

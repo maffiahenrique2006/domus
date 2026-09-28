@@ -12,6 +12,7 @@ export async function generateAi(system:string,input:string,schema?:Record<strin
  const client=getOpenAIClient();
  let response;
  try{response=await client.responses.create({model,input:[{role:'system',content:system},{role:'user',content:input}],max_output_tokens:schema?2200:700,store:false,
+ ...(/^(gpt-5|o\d)/.test(model)?{reasoning:{effort:'low' as const}}:{}),
  ...(schema?{text:{format:{type:'json_schema' as const,name:'domus_structured',strict:true,schema}}}:{})});}
  catch(error){if(error instanceof OpenAI.RateLimitError)throw new AiRateLimitedError();throw new AiUnavailableError(error);}
  const usage=response.usage;const text=response.output_text?.trim();

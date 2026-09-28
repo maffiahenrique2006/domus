@@ -92651,7 +92651,7 @@ function getOpenAIClient() {
     throw new MissingApiKeyError();
   }
   if (!cachedClient || cachedKey !== apiKey) {
-    cachedClient = new OpenAI({ apiKey, timeout: 2e4, maxRetries: 0 });
+    cachedClient = new OpenAI({ apiKey, timeout: 5e4, maxRetries: 0 });
     cachedKey = apiKey;
   }
   return cachedClient;
@@ -92673,6 +92673,7 @@ async function generateAi(system, input, schema2, onUsage) {
       input: [{ role: "system", content: system }, { role: "user", content: input }],
       max_output_tokens: schema2 ? 2200 : 700,
       store: false,
+      .../^(gpt-5|o\d)/.test(model) ? { reasoning: { effort: "low" } } : {},
       ...schema2 ? { text: { format: { type: "json_schema", name: "domus_structured", strict: true, schema: schema2 } } } : {}
     });
   } catch (error40) {
@@ -92902,12 +92903,13 @@ var interviewResultSchema = external_exports.object({ reply: external_exports.st
 async function conductInterview(messages, onUsage) {
   const result = await generateAi(MANAGEMENT_RULES + `
 Voc\xEA entrevista um gestor para montar seu sistema, n\xE3o para cadastrar casos fict\xEDcios. Aproveite todas as informa\xE7\xF5es j\xE1 dadas. Fa\xE7a no m\xE1ximo 3 perguntas curtas por rodada, sem repetir respostas. Extraia nome do escrit\xF3rio, \xE1reas/servi\xE7os, dor a organizar, entrada de pedidos, etapas de entrega, respons\xE1veis e necessidade de pagamentos/recebimentos. TODOS s\xE3o essenciais: se faltar qualquer um retorne configuration:null e pergunte; n\xE3o preencha pend\xEAncias como se fossem respostas. Pode aceitar 'eu sou respons\xE1vel', 'n\xE3o preciso de financeiro' e autoriza\xE7\xE3o expl\xEDcita para sugerir etapas. briefing cont\xE9m pain (dor), intake (entrada dos pedidos), responsibility (quem acompanha), financialNeeds receber/pagar/ambos/nenhum, somente conforme as respostas. Com todas as respostas, proponha configuration e pe\xE7a revis\xE3o/confirma\xE7\xE3o. Etapas sugeridas devem ser explicitadas como sugest\xE3o no reply. N\xE3o invente nomes de equipe, valores, clientes ou informa\xE7\xF5es operacionais afirmadas como fatos. Fora de escrit\xF3rios de advocacia: explique o escopo e pergunte se deseja continuar para esse segmento.
-A configura\xE7\xE3o deve conter: companyName; summary resumindo problema, entrada, responsabilidade e financeiro; 1 a 12 services; 2 a 8 stages com id simples [a-z0-9_]; at\xE9 8 fields. Campos s\xE3o apenas informa\xE7\xF5es adicionais espec\xEDficas, n\xE3o duplique t\xEDtulo, cliente, respons\xE1vel, prazo, prioridade, valor, descri\xE7\xE3o e status j\xE1 existentes. Cada field tem id, label, type text/number/select, entity demand/project, required e options (vazio salvo select com 2 ou mais op\xE7\xF5es). IDs e r\xF3tulos n\xE3o podem se repetir. Evite coletar dados sens\xEDveis desnecess\xE1rios. Personaliza\xE7\xE3o n\xE3o gera c\xF3digo, integra\xE7\xF5es banc\xE1rias, documentos, automa\xE7\xF5es ou conex\xF5es com tribunais. S\xF3 apresente essas capacidades como n\xE3o dispon\xEDveis.`, JSON.stringify({ messages }), schema, onUsage);
+A configura\xE7\xE3o deve conter: companyName; summary resumindo problema, entrada, responsabilidade e financeiro; 1 a 12 services; 2 a 8 stages com id simples [a-z0-9_]; at\xE9 8 fields. Campos s\xE3o apenas informa\xE7\xF5es adicionais espec\xEDficas, n\xE3o duplique t\xEDtulo, cliente, respons\xE1vel, prazo, prioridade, valor, descri\xE7\xE3o e status j\xE1 existentes. Cada field tem id, label, type text/number/select, entity demand/project, required e options (vazio salvo select com 2 ou mais op\xE7\xF5es). IDs e r\xF3tulos n\xE3o podem se repetir. Evite coletar dados sens\xEDveis desnecess\xE1rios. Personaliza\xE7\xE3o n\xE3o gera c\xF3digo, integra\xE7\xF5es banc\xE1rias, documentos, automa\xE7\xF5es ou conex\xF5es com tribunais. S\xF3 apresente essas capacidades como n\xE3o dispon\xEDveis.
+Limites obrigat\xF3rios: companyName, cada service, cada label e cada option com no m\xE1ximo 80 caracteres; briefing.pain, briefing.intake e briefing.responsibility com no m\xE1ximo 150 caracteres cada, em uma frase; summary entre 50 e 600 caracteres; reply com no m\xE1ximo 1200 caracteres; ids s\xF3 com letras min\xFAsculas sem acento, d\xEDgitos e sublinhado.`, JSON.stringify({ messages }), schema, onUsage);
   return { result, parse: () => interviewResultSchema.parse(JSON.parse(result.text)) };
 }
 
 // artifacts/api-server/src/routes/workspace.ts
-function handleWorkspaceError(error40, _req, res, next) {
+function handleWorkspaceError(error40, req, res, next) {
   if (error40 instanceof WorkspaceError) {
     res.status(error40.status).json({ error: error40.message });
     return;
@@ -92925,6 +92927,12 @@ function handleWorkspaceError(error40, _req, res, next) {
     return;
   }
   if (error40 instanceof AiUnavailableError || error40 instanceof SyntaxError) {
+    const cause = error40 instanceof AiUnavailableError ? error40.cause : error40;
+    logger.warn({ event: "ai_unavailable", route: req.path, causeName: cause?.constructor?.name, causeStatus: typeof cause?.status === "number" ? cause.status : void 0, causeCode: cause?.code ?? void 0, causeMessage: typeof cause?.message === "string" ? cause.message.slice(0, 300) : void 0 }, "AI unavailable");
+    if (cause instanceof OpenAI.APIConnectionTimeoutError) {
+      res.status(504).json({ error: "A IA demorou demais para responder. Tente de novo em instantes." });
+      return;
+    }
     res.status(502).json({ error: "A IA n\xE3o retornou uma resposta v\xE1lida. Sua configura\xE7\xE3o n\xE3o foi alterada." });
     return;
   }
@@ -92958,7 +92966,8 @@ router4.post("/onboarding/interview", rateLimit({ windowMs: 6e4, max: 6 }), asyn
   let parsed;
   try {
     parsed = ai.parse();
-  } catch {
+  } catch (error40) {
+    logger.warn({ event: "interview_invalid_configuration", issues: error40 instanceof external_exports.ZodError ? error40.issues.map((i2) => ({ path: i2.path.join("."), message: i2.message })) : void 0, errorName: error40 instanceof external_exports.ZodError ? void 0 : error40?.name }, "Interview returned invalid configuration");
     throw new AiUnavailableError(new Error("Invalid configuration"));
   }
   const updated = await pool.query("UPDATE legal_companies SET interview=$2,proposal=$3,revision=revision+1 WHERE id=$1 AND revision=$4 RETURNING id", [id, JSON.stringify([...messages, { role: "assistant", content: parsed.reply, questions: parsed.questions }]), parsed.configuration, r2.rows[0].revision]);
