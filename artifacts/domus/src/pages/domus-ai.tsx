@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { track } from "@/lib/analytics";
 import {
   Send,
   Sparkles,
@@ -776,13 +777,17 @@ export default function DomusAIPage() {
   async function confirmProposals(messageId: string, list: Proposal[]) {
     if (saving) return;
     setSaving(true);
+    let saved = 0;
+    let failed = 0;
     try {
       for (const p of list) {
         patchProposal(messageId, p.key, { status: "salvando", error: undefined });
         try {
           await saveProposal(p);
+          saved += 1;
           patchProposal(messageId, p.key, { status: "confirmada" });
         } catch (e) {
+          failed += 1;
           patchProposal(messageId, p.key, {
             status: "erro",
             error: e instanceof Error ? e.message : "Não foi possível salvar.",
@@ -799,6 +804,7 @@ export default function DomusAIPage() {
       }
     } finally {
       setSaving(false);
+      track("ai_proposals_confirmed", { saved, failed });
     }
   }
 
@@ -837,6 +843,16 @@ export default function DomusAIPage() {
         return;
       }
 
+      const received = normalizeProposals(body.proposals);
+      track("ai_question_sent", {
+        proposals: received.length,
+        total_tokens: body.usage?.totalTokens ?? 0,
+      });
+      if (received.length)
+        track("ai_proposals_received", {
+          count: received.length,
+          kinds: [...new Set(received.map((p) => p.kind))].sort().join(","),
+        });
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "ai",
@@ -845,7 +861,7 @@ export default function DomusAIPage() {
             ? body.message.content
             : "Resposta recebida.",
         timestamp: now(),
-        proposals: normalizeProposals(body.proposals),
+        proposals: received,
       };
       setMessages((prev) => [...prev, aiMsg]);
 

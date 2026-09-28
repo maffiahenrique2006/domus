@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { track } from "@/lib/analytics";
 import { useLocation } from "wouter";
 import { Sparkles, Send, Plus, Trash2 } from "lucide-react";
 import { api, useWorkspace } from "@/data/store";
@@ -53,6 +54,10 @@ export default function Onboarding() {
         configuration: Configuration | null;
         usage: Interview["usage"];
       }>("/api/onboarding/interview", { message });
+      track("onboarding_interview_sent", {
+        proposal_ready: Boolean(result.configuration),
+        questions: result.questions.length,
+      });
       setMessages((prev) => [
         ...prev,
         { role: "user", content: message },
@@ -87,6 +92,11 @@ export default function Onboarding() {
           revision: state.revision,
         }),
       );
+      track("onboarding_confirmed", {
+        services: proposal.services.length,
+        stages: proposal.stages.length,
+        fields: proposal.fields.length,
+      });
       navigate("/");
     } catch (e) {
       setError((e as Error).message);
