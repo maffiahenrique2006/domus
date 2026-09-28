@@ -1,14 +1,14 @@
 // Cadastro por conversa: a IA PROPÕE; ela nunca grava.
-// Cobre quatro gestos: cliente, demanda, transformar demanda em caso e lançamento financeiro.
+// Cobre cinco gestos: cliente, demanda, caso (a partir de demanda ou do zero), tarefa e lançamento financeiro.
 // Este módulo define o formato que a IA devolve e limpa cada proposta contra a
 // configuração e os registros do escritório. A gravação acontece depois, quando o
 // gestor confirma na tela, pela mesma rota /workspace/actions usada pelos formulários.
 import { z } from 'zod/v4';
 import type { Configuration } from './workspace-validation';
 
-const MAX_PROPOSALS = 10;
+const MAX_PROPOSALS = 12;
 const PRIORITIES = ['urgente', 'alta', 'media', 'baixa'] as const;
-const KINDS = ['client', 'demand', 'case', 'financial'] as const;
+const KINDS = ['client', 'demand', 'case', 'task', 'financial'] as const;
 const FINANCIAL_TYPES = ['receber', 'pagar'] as const;
 
 const string = { type: 'string' };
@@ -41,6 +41,7 @@ export const chatReplyJsonSchema = object({
       },
       demandId: string,
       projectId: string,
+      caseName: string,
       financialType: { type: 'string', enum: [...FINANCIAL_TYPES] },
       settled: { type: 'boolean' },
       category: string,
@@ -62,6 +63,7 @@ const rawProposal = z.object({
   customValues: z.array(z.object({ fieldId: z.string(), value: z.string() })).catch([]),
   demandId: z.string().catch(''),
   projectId: z.string().catch(''),
+  caseName: z.string().catch(''),
   financialType: z.enum(FINANCIAL_TYPES).catch('receber'),
   settled: z.boolean().catch(false),
   category: z.string().catch(''),
@@ -90,14 +92,34 @@ export interface DemandProposal {
   /** Rótulos de informações obrigatórias que o gestor não informou. */
   missing: string[];
 }
-/** Transformar uma demanda em caso. A demanda pode já existir (demandId) ou estar proposta na mesma resposta. */
+/**
+ * Criar um caso. fromDemand true: transforma uma demanda em caso; ela pode já existir (demandId)
+ * ou estar proposta na mesma resposta (mesmo nome). fromDemand false: caso criado do zero.
+ */
 export interface CaseProposal {
   kind: 'case';
+  fromDemand: boolean;
   demandId: string;
-  demandTitle: string;
+  name: string;
   client: string;
+  service: string;
+  responsible: string;
+  dueDate: string;
+  budget: number;
+  description: string;
   customValues: Record<string, string | number>;
   missing: string[];
+}
+export interface TaskProposal {
+  kind: 'task';
+  title: string;
+  description: string;
+  responsible: string;
+  dueDate: string;
+  /** Caso já existente, quando a IA apontou um id ou nome válido. */
+  projectId: string;
+  /** Nome do caso: existente ou a ser criado nesta mesma resposta. */
+  caseName: string;
 }
 export interface FinancialProposal {
   kind: 'financial';
@@ -114,7 +136,7 @@ export interface FinancialProposal {
   caseName: string;
   missing: string[];
 }
-export type Proposal = ClientProposal | DemandProposal | CaseProposal | FinancialProposal;
+export type Proposal = ClientProposal | DemandProposal | CaseProposal | TaskProposal | FinancialProposal;
 
 /** O que o módulo precisa conhecer do escritório para conferir referências. */
 export interface OfficeRecords {
@@ -162,7 +184,7 @@ function customValuesFor(
 
 /**
  * Converte a resposta crua da IA em propostas seguras, na ordem em que podem ser gravadas:
- * clientes, demandas, casos, lançamentos. Tudo o que não bate com a configuração ou com os
+ * clientes, demandas, casos, tarefas, lançamentos. Tudo o que não bate com a configuração ou com os
  * registros do escritório é descartado aqui; o que sobra ainda passa pela validação completa
  * na hora de gravar.
  */
@@ -183,6 +205,7 @@ export function parseChatReply(
   const clients: ClientProposal[] = [];
   const demands: DemandProposal[] = [];
   const cases: CaseProposal[] = [];
+  const tasks: TaskProposal[] = [];
   const financial: FinancialProposal[] = [];
 
   for (const raw of raws.filter((r) => r.kind === 'client')) {
@@ -218,19 +241,55 @@ export function parseChatReply(
     const title = clean(raw.title, 200);
     const existing = byId ?? office.demands.find((d) => title && same(d.title, title));
     const proposed = existing ? undefined : demands.find((d) => title && same(d.title, title));
-    if (!existing && !proposed) continue;
     // Demanda já convertida ou cancelada não vira caso de novo.
     if (existing && (existing.projectId || ['convertida', 'cancelada'].includes(existing.status))) continue;
-    const demandTitle = existing?.title ?? proposed!.title;
-    if (cases.some((c) => same(c.demandTitle, demandTitle))) continue;
+    const name = existing?.title ?? proposed?.title ?? title;
+    const client = existing?.client ?? proposed?.client ?? clean(raw.clientName, 200);
+    if (!name || !client) continue;
+    if (cases.some((c) => same(c.name, name)) || office.projects.some((p) => same(p.name, name))) continue;
     const { values, missing } = customValuesFor(raw.customValues, config, 'project');
+    const fromDemand = Boolean(existing || proposed);
     cases.push({
       kind: 'case',
+      fromDemand,
       demandId: existing?.id ?? '',
-      demandTitle,
-      client: existing?.client ?? proposed!.client,
+      name,
+      client,
+      // Na conversão, estes dados vêm da demanda; aqui só valem para caso criado do zero.
+      service: fromDemand ? '' : (config.services.find((s) => same(s, raw.service)) ?? ''),
+      responsible: fromDemand ? '' : clean(raw.responsible, 200),
+      dueDate: fromDemand ? '' : isDate(raw.dueDate) ? raw.dueDate : '',
+      budget: fromDemand ? 0 : money(raw.amount),
+      description: fromDemand ? '' : clean(raw.description, 8000),
       customValues: values,
       missing,
+    });
+  }
+
+  // Caso de destino de tarefa ou lançamento: existente (id ou nome) ou proposto nesta resposta.
+  const resolveCase = (projectId: string, caseName: string) => {
+    const wanted = clean(caseName, 200);
+    const project =
+      office.projects.find((p) => p.id === projectId) ??
+      office.projects.find((p) => wanted && same(p.name, wanted));
+    if (project) return { projectId: project.id, caseName: project.name };
+    const pending = cases.find((c) => wanted && same(c.name, wanted));
+    return pending ? { projectId: '', caseName: pending.name } : null;
+  };
+
+  for (const raw of raws.filter((r) => r.kind === 'task')) {
+    const title = clean(raw.title, 200);
+    const target = resolveCase(raw.projectId, raw.caseName);
+    // Tarefa sempre pertence a um caso; sem caso identificado, não há onde gravar.
+    if (!title || !target) continue;
+    if (tasks.some((t) => same(t.title, title) && same(t.caseName, target.caseName))) continue;
+    tasks.push({
+      kind: 'task',
+      title,
+      description: clean(raw.description, 4000),
+      responsible: clean(raw.responsible, 200),
+      dueDate: isDate(raw.dueDate) ? raw.dueDate : '',
+      ...target,
     });
   }
 
@@ -240,13 +299,7 @@ export function parseChatReply(
     const amount = money(raw.amount);
     const dueDate = isDate(raw.dueDate) ? raw.dueDate : '';
     const clientOrSupplier = clean(raw.clientName, 200);
-    const project = office.projects.find((p) => p.id === raw.projectId);
-    // O caso pode ainda não existir: aceita o nome se houver caso proposto ou existente com esse nome.
-    const wanted = clean(raw.description, 200);
-    const byName =
-      project ??
-      office.projects.find((p) => wanted && same(p.name, wanted));
-    const pendingCase = byName ? undefined : cases.find((c) => wanted && same(c.demandTitle, wanted));
+    const target = resolveCase(raw.projectId, raw.caseName);
     const missing = [
       ...(amount > 0 ? [] : ['Valor']),
       ...(dueDate ? [] : ['Vencimento']),
@@ -261,28 +314,32 @@ export function parseChatReply(
       dueDate,
       settled: raw.settled,
       category: clean(raw.category, 200) || (raw.financialType === 'receber' ? 'Honorários' : 'Despesa'),
-      projectId: byName?.id ?? '',
-      caseName: byName?.name ?? pendingCase?.demandTitle ?? '',
+      projectId: target?.projectId ?? '',
+      caseName: target?.caseName ?? '',
       missing,
     });
   }
 
-  const proposals: Proposal[] = [...clients, ...demands, ...cases, ...financial].slice(0, MAX_PROPOSALS);
+  const proposals: Proposal[] = [...clients, ...demands, ...cases, ...tasks, ...financial].slice(0, MAX_PROPOSALS);
   return { reply: parsed.reply, proposals };
 }
 
 export const PROPOSAL_RULES = `
 Responda SEMPRE no formato JSON pedido. "reply" é o texto para o gestor, em até 6 frases.
 
-VOCÊ PREPARA QUATRO TIPOS DE PROPOSTA, e só estes: cadastrar cliente, cadastrar demanda, transformar uma demanda em caso, e registrar um lançamento financeiro. Você NÃO grava nada: o gestor confirma cada proposta na tela. No reply, diga que são propostas aguardando confirmação. Nunca diga que salvou, cadastrou, criou, lançou ou converteu.
+VOCÊ PREPARA CINCO TIPOS DE PROPOSTA, e só estes: cadastrar cliente, cadastrar demanda, criar caso, criar tarefa em um caso e registrar lançamento financeiro. Você NÃO grava nada: o gestor confirma cada proposta na tela. No reply, diga que são propostas aguardando confirmação e que depois ele pode abrir e editar cada registro na tela. Nunca diga que salvou, cadastrou, criou, lançou ou converteu.
 Se não houver pedido de cadastro, "proposals" é uma lista vazia.
 Use somente o que o gestor escreveu ou o que está em context. Campo não informado fica vazio: texto "", número 0, data "", settled false. Não invente e-mail, prazo, valor, responsável nem cliente.
 Nunca peça informação que o sistema não guarda (forma de pagamento, data de emissão, responsável financeiro, número de processo). Se faltar algo obrigatório, monte a proposta com o que há: a tela avisa o gestor do que falta.
-Para pedidos fora dos quatro tipos (criar caso sem demanda, editar ou excluir registros, criar tarefas, mudar configuração), diga em uma frase que isso não é feito pelo chat e indique a tela: Casos, Demandas, Clientes, Financeiro ou Configuração do escritório. Não prometa preparar algo que não está nos quatro tipos.
+Para pedidos fora dos cinco tipos (editar ou excluir registros, mover etapa, concluir tarefa, mudar configuração), diga em uma frase que isso não é feito pelo chat e indique a tela: Casos, Demandas, Clientes, Financeiro ou Configuração do escritório. Não prometa preparar algo que não está nos cinco tipos.
 
 kind "client": preencha clientName e, se informado, email. Não proponha cliente que já está em context.clients.
-kind "demand": clientName é o cliente; title é o nome curto do pedido; service deve ser exatamente um dos context.configuration.services ou ""; responsible é quem executa; priority é urgente, alta, media ou baixa (use media se não informado); dueDate AAAA-MM-DD ou ""; amount são os honorários estimados. customValues só aceita fieldId de context.configuration.demandFields.
-kind "case": transforma UMA demanda em caso. Se a demanda já existe em context.demands, preencha demandId com o id dela e title com o título dela. Se a demanda está sendo proposta nesta mesma resposta, deixe demandId "" e repita em title exatamente o title da demanda proposta. customValues só aceita fieldId de context.configuration.caseFields. Confirmar esta proposta aprova a demanda.
-kind "financial": title é a descrição do lançamento; financialType é receber ou pagar; clientName é o cliente ou fornecedor; amount é o valor, maior que zero; dueDate é o vencimento AAAA-MM-DD (calcule a partir de context.today quando o gestor disser "em 30 dias" ou "dia 10"); settled true somente se o gestor disser que já foi recebido ou pago; category é curta, como Mensalidade, Êxito, Honorários ou Despesa. Para vincular a um caso: se o caso existe em context.projects, preencha projectId com o id; se o caso será criado nesta mesma resposta, deixe projectId "" e escreva em description exatamente o title da demanda que vira caso. Sem vínculo, deixe os dois vazios.
-Honorários estimados de uma demanda não são lançamento financeiro: só proponha kind "financial" quando o gestor pedir um lançamento, conta a receber, conta a pagar, cobrança ou pagamento.
-Em campo do tipo select use exatamente uma das options. No máximo 10 propostas por resposta; se o pedido tiver mais, proponha as 10 primeiras e avise no reply.`;
+kind "demand": um pedido ainda em análise. clientName é o cliente; title é o nome curto do pedido; service deve ser exatamente um dos context.configuration.services ou ""; responsible é quem executa; priority é urgente, alta, media ou baixa (use media se não informado); dueDate AAAA-MM-DD ou ""; amount são os honorários estimados; description é o detalhe. customValues só aceita fieldId de context.configuration.demandFields.
+kind "case": um trabalho em execução. Há dois caminhos.
+ (a) A partir de uma demanda: se ela existe em context.demands, preencha demandId com o id dela e title com o título dela; se ela está sendo proposta nesta mesma resposta, deixe demandId "" e repita em title exatamente o title da demanda proposta. Confirmar aprova a demanda.
+ (b) Do zero, quando o gestor pede um caso e não há demanda: demandId "", title é o nome do caso, clientName o cliente, e preencha service, responsible, dueDate, amount (honorários previstos) e description com o que foi dito. Não crie demanda só para virar caso.
+ customValues só aceita fieldId de context.configuration.caseFields. Não proponha caso com nome igual ao de um caso em context.projects.
+kind "task": uma ação dentro de um caso. title é o que precisa ser feito; description é o detalhe; responsible quem faz; dueDate AAAA-MM-DD ou "". Indique o caso: projectId com o id de context.projects, ou caseName com o nome exato do caso existente ou do caso proposto nesta mesma resposta. Tarefa sem caso não existe.
+kind "financial": title é a descrição do lançamento; financialType é receber ou pagar; clientName é o cliente ou fornecedor; amount é o valor, maior que zero; dueDate é o vencimento AAAA-MM-DD (calcule a partir de context.today quando o gestor disser "em 30 dias" ou "dia 10"); settled true somente se o gestor disser que já foi recebido ou pago; category é curta, como Mensalidade, Êxito, Honorários ou Despesa. Para vincular a um caso use projectId ou caseName, como na tarefa. Sem vínculo, deixe os dois vazios.
+Honorários estimados ou previstos não são lançamento financeiro: só proponha kind "financial" quando o gestor pedir um lançamento, conta a receber, conta a pagar, cobrança ou pagamento.
+Datas ditas como dia/mês/ano devem ser convertidas para AAAA-MM-DD. Em campo do tipo select use exatamente uma das options. No máximo 12 propostas por resposta; se o pedido tiver mais, proponha as 12 primeiras e avise no reply.`;

@@ -3,10 +3,10 @@ import { AppLayout } from "@/components/layout/app-layout";
 import {
   Overview as OverviewPage,
   Demands as DemandsPage,
-  Cases as ProjectsPage,
   Finance as FinancialPage,
   Clients,
 } from "@/pages/legal-workspace";
+import { Cases as ProjectsPage } from "@/pages/cases";
 import Onboarding from "@/pages/onboarding";
 import { useWorkspace } from "@/data/store";
 import DomusAIPage from "@/pages/domus-ai";

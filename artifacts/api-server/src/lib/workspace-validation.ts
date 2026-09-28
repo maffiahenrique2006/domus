@@ -35,10 +35,10 @@ export const demandSchema = z.object({
  comments:z.array(z.object({id:identifier,author:text,authorInitials:z.string().max(10),text:z.string().max(4000),createdAt:z.string().max(50)})).max(500).default([]),
  history,files:z.array(z.unknown()).max(0).default([]),createdAt:z.string().max(50),customValues,
 });
-export const taskSchema=z.object({id:identifier,title:text,responsible:z.string().max(200),done:z.boolean(),dueDate:optionalDate.optional()});
+export const taskSchema=z.object({id:identifier,title:text,responsible:z.string().max(200),done:z.boolean(),dueDate:optionalDate.optional(),description:z.string().max(4000).optional()});
 export const projectSchema=z.object({
  id:identifier,name:text,client:text,clientId:identifier.optional(),service:z.string().max(200).optional(),responsible:z.string().max(200),phase:identifier,progress:z.number().min(0).max(100),dueDate:optionalDate,
- budget:money,plannedCost:money,realizedCost:money,health:z.enum(['saudavel','atencao']),healthNote:z.string().max(2000).optional(),demandId:identifier.optional(),
+ budget:money,plannedCost:money,realizedCost:money,health:z.enum(['saudavel','atencao']),healthNote:z.string().max(2000).optional(),description:z.string().max(8000).optional(),demandId:identifier.optional(),
  tasks:z.array(taskSchema).max(200),phases:z.array(z.object({id:identifier,label:text,startDate:optionalDate,endDate:optionalDate})).max(8),history,customValues,
 });
 export const financialSchema=z.object({id:identifier,type:z.enum(['receber','pagar']),description:text,clientOrSupplier:text,projectId:identifier.optional(),amount:money.refine(n=>n>0),dueDate:date,status:z.enum(['pendente','vencido','pago','recebido']),paidAt:date.optional(),category:text});

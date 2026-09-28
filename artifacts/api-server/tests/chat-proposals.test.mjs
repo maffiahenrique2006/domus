@@ -31,7 +31,7 @@ const office = {
   ],
   projects: [{ id: 'p-1', name: 'Ata anual', client: 'Cliente X' }],
 };
-const base = { clientName: '', email: '', title: '', service: '', responsible: '', priority: 'media', dueDate: '', amount: 0, description: '', customValues: [], demandId: '', projectId: '', financialType: 'receber', settled: false, category: '' };
+const base = { clientName: '', email: '', title: '', service: '', responsible: '', priority: 'media', dueDate: '', amount: 0, description: '', customValues: [], demandId: '', projectId: '', caseName: '', financialType: 'receber', settled: false, category: '' };
 const reply = (proposals) => JSON.stringify({ reply: 'Propostas prontas para confirmação.', proposals });
 const parse = (proposals, records = empty, cfg = config) => parseChatReply(reply(proposals), cfg, records).proposals;
 
@@ -88,7 +88,7 @@ test('demanda sem título ou sem cliente é descartada', () => {
 
 test('caso a partir de demanda existente, por id ou por título', () => {
   const byId = parse([{ ...base, kind: 'case', demandId: 'd-nova', customValues: [{ fieldId: 'honorario', value: 'êxito' }] }], office)[0];
-  assert.deepEqual(byId, { kind: 'case', demandId: 'd-nova', demandTitle: 'Aquisição da empresa Y', client: 'Cliente X', customValues: { honorario: 'Êxito' }, missing: [] });
+  assert.deepEqual(byId, { kind: 'case', fromDemand: true, demandId: 'd-nova', name: 'Aquisição da empresa Y', client: 'Cliente X', service: '', responsible: '', dueDate: '', budget: 0, description: '', customValues: { honorario: 'Êxito' }, missing: [] });
   const byTitle = parse([{ ...base, kind: 'case', title: 'aquisição da empresa y' }], office)[0];
   assert.equal(byTitle.demandId, 'd-nova');
 });
@@ -100,13 +100,36 @@ test('caso a partir de demanda proposta na mesma resposta fica sem id e vem depo
   ]);
   assert.deepEqual(r.map((p) => p.kind), ['demand', 'case']);
   assert.equal(r[1].demandId, '');
+  assert.equal(r[1].fromDemand, true);
   assert.equal(r[1].client, 'Cliente Y');
 });
 
-test('caso é descartado se a demanda não existe, já virou caso, foi cancelada ou se repete', () => {
+test('caso do zero, sem demanda, guarda os dados informados', () => {
+  const c = parse([{ ...base, kind: 'case', title: 'Defesa administrativa', clientName: 'Cliente X', service: 'compliance', responsible: 'Rachel', dueDate: '2026-11-20', amount: 30000, description: 'Resposta a notificação.' }], office)[0];
+  assert.deepEqual(c, { kind: 'case', fromDemand: false, demandId: '', name: 'Defesa administrativa', client: 'Cliente X', service: 'Compliance', responsible: 'Rachel', dueDate: '2026-11-20', budget: 30000, description: 'Resposta a notificação.', customValues: {}, missing: [] });
+});
+
+test('caso do zero sem cliente, ou com nome de caso que já existe, é descartado', () => {
+  assert.equal(parse([{ ...base, kind: 'case', title: 'Sem cliente' }, { ...base, kind: 'case', title: 'ata anual', clientName: 'Cliente X' }], office).length, 0);
+});
+
+test('tarefa entra em caso existente ou em caso proposto na mesma resposta; sem caso é descartada', () => {
+  const r = parse([
+    { ...base, kind: 'task', title: 'Levantar contratos', description: 'Últimos 5 anos.', responsible: 'Mike', dueDate: '2026-10-20', caseName: 'Aquisição da empresa Y' },
+    { ...base, kind: 'task', title: 'Publicar ata', projectId: 'p-1' },
+    { ...base, kind: 'task', title: 'Tarefa solta', caseName: 'Caso que não existe' },
+    { ...base, kind: 'task', title: 'levantar contratos', caseName: 'aquisição da empresa y' },
+    { ...base, kind: 'case', demandId: 'd-nova' },
+  ], office);
+  assert.deepEqual(r.map((p) => p.kind), ['case', 'task', 'task']);
+  assert.deepEqual(r[1], { kind: 'task', title: 'Levantar contratos', description: 'Últimos 5 anos.', responsible: 'Mike', dueDate: '2026-10-20', projectId: '', caseName: 'Aquisição da empresa Y' });
+  assert.deepEqual([r[2].projectId, r[2].caseName], ['p-1', 'Ata anual']);
+});
+
+test('caso é descartado se a demanda não existe e falta cliente, já virou caso, foi cancelada ou se repete', () => {
   assert.equal(parse([
     { ...base, kind: 'case', demandId: 'inventado', title: 'Demanda que não existe' },
-    { ...base, kind: 'case', demandId: 'd-conv' },
+    { ...base, kind: 'case', demandId: 'd-conv', clientName: 'Cliente X' },
     { ...base, kind: 'case', demandId: 'd-canc' },
   ], office).length, 0);
   assert.equal(parse([{ ...base, kind: 'case', demandId: 'd-nova' }, { ...base, kind: 'case', title: 'Aquisição da empresa Y' }], office).length, 1);
@@ -115,14 +138,14 @@ test('caso é descartado se a demanda não existe, já virou caso, foi cancelada
 test('lançamento completo, com vínculo a caso existente por id ou por nome', () => {
   const f = parse([{ ...base, kind: 'financial', title: 'Honorário de êxito', clientName: 'Cliente X', amount: 150000, dueDate: '2026-12-15', category: 'Êxito', projectId: 'p-1' }], office)[0];
   assert.deepEqual(f, { kind: 'financial', type: 'receber', description: 'Honorário de êxito', clientOrSupplier: 'Cliente X', amount: 150000, dueDate: '2026-12-15', settled: false, category: 'Êxito', projectId: 'p-1', caseName: 'Ata anual', missing: [] });
-  const byName = parse([{ ...base, kind: 'financial', title: 'Custas', financialType: 'pagar', clientName: 'Cartório', amount: 300, dueDate: '2026-10-10', description: 'ata anual', projectId: 'id-inventado' }], office)[0];
+  const byName = parse([{ ...base, kind: 'financial', title: 'Custas', financialType: 'pagar', clientName: 'Cartório', amount: 300, dueDate: '2026-10-10', caseName: 'ata anual', projectId: 'id-inventado' }], office)[0];
   assert.equal(byName.projectId, 'p-1');
   assert.equal(byName.category, 'Despesa');
 });
 
 test('lançamento vinculado a caso que será criado na mesma resposta guarda o nome do caso', () => {
   const r = parse([
-    { ...base, kind: 'financial', title: 'Honorário de êxito M&A', clientName: 'Cliente X', amount: 150000, dueDate: '2026-12-15', description: 'Aquisição da empresa Y' },
+    { ...base, kind: 'financial', title: 'Honorário de êxito M&A', clientName: 'Cliente X', amount: 150000, dueDate: '2026-12-15', caseName: 'Aquisição da empresa Y' },
     { ...base, kind: 'case', demandId: 'd-nova' },
   ], office);
   assert.deepEqual(r.map((p) => p.kind), ['case', 'financial']);
@@ -143,9 +166,9 @@ test('proposta malformada é ignorada sem derrubar as outras', () => {
   assert.deepEqual(r.map((p) => p.kind), ['financial', 'client'].filter((k) => k === 'client'));
 });
 
-test('no máximo 10 propostas por resposta', () => {
+test('no máximo 12 propostas por resposta', () => {
   const many = Array.from({ length: 14 }, (_, i) => ({ ...base, kind: 'client', clientName: `Cliente ${i}` }));
-  assert.equal(parse(many).length, 10);
+  assert.equal(parse(many).length, 12);
 });
 
 test('escritório sem configuração não recebe propostas', () => {

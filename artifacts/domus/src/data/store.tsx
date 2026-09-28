@@ -38,13 +38,19 @@ const Context = createContext<{
 } | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<Workspace | null>(null);
+  // Espelho do estado mais recente: ações em sequência usam a revisão atual, não a da renderização.
+  const latest = useRef<Workspace | null>(null);
+  function apply(workspace: Workspace) {
+    latest.current = workspace;
+    setState(workspace);
+  }
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const locked = useRef(false);
   async function refresh() {
     setError("");
     try {
-      setState(await api<Workspace>("/api/workspace"));
+      apply(await api<Workspace>("/api/workspace"));
     } catch (e) {
       setError(String(e instanceof Error ? e.message : e));
     }
@@ -53,14 +59,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, []);
   async function dispatch(action: Action) {
-    if (locked.current || !state) throw new Error("Aguarde a operação atual.");
+    if (locked.current || !latest.current)
+      throw new Error("Aguarde a operação atual.");
     locked.current = true;
     setBusy(true);
     try {
-      setState(
+      apply(
         await api<Workspace>("/api/workspace/actions", {
           ...action,
-          revision: state.revision,
+          revision: latest.current.revision,
         }),
       );
     } catch (e) {
@@ -89,7 +96,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   return (
     <Context.Provider
-      value={{ state, dispatch, refresh, replace: setState, busy }}
+      value={{ state, dispatch, refresh, replace: apply, busy }}
     >
       {children}
     </Context.Provider>

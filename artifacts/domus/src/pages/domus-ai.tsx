@@ -43,11 +43,27 @@ interface DemandProposal {
 
 interface CaseProposal {
   kind: "case";
+  fromDemand: boolean;
   demandId: string;
-  demandTitle: string;
+  name: string;
   client: string;
+  service: string;
+  responsible: string;
+  dueDate: string;
+  budget: number;
+  description: string;
   customValues: Record<string, string | number>;
   missing: string[];
+}
+
+interface TaskProposal {
+  kind: "task";
+  title: string;
+  description: string;
+  responsible: string;
+  dueDate: string;
+  projectId: string;
+  caseName: string;
 }
 
 interface FinancialProposal {
@@ -68,6 +84,7 @@ type RawProposal =
   | ClientProposal
   | DemandProposal
   | CaseProposal
+  | TaskProposal
   | FinancialProposal;
 
 type Proposal = RawProposal & {
@@ -108,11 +125,12 @@ function now(offsetMin = 0) {
 const WELCOME_MESSAGE: Message = {
   id: "welcome",
   role: "ai",
-  text: "Olá! Sou a Domus AI. Posso consultar um resumo dos seus casos, demandas e financeiro, e preparar quatro tipos de cadastro: cliente, demanda, transformar demanda em caso e lançamento financeiro. Você descreve, eu proponho, e nada é salvo sem a sua confirmação. Não substituo a análise jurídica nem calculo prazos processuais. O que você quer organizar?",
+  text: "Olá! Sou a Domus AI. Posso consultar um resumo do escritório e preparar cadastros: cliente, demanda, caso, tarefa e lançamento financeiro. Você descreve, eu proponho, e nada é salvo sem a sua confirmação. Depois você abre e edita cada registro na tela. Não substituo a análise jurídica nem calculo prazos processuais. O que você quer organizar?",
   timestamp: now(),
 };
 
 const SUGGESTIONS = [
+  "O que tenho a receber e qual caso precisa de atenção?",
   "Como devo priorizar minhas demandas essa semana?",
   "O que olhar antes de fechar o mês no financeiro?",
   "Quais casos precisam de atenção e por quê?",
@@ -229,12 +247,14 @@ function ProposalCard({
   disabled,
   onConfirm,
   onDiscard,
+  onOpen,
 }: {
   proposal: Proposal;
   fieldLabels: Record<string, string>;
   disabled: boolean;
   onConfirm: () => void;
   onDiscard: () => void;
+  onOpen: (href: string) => void;
 }) {
   const customDetails = (values: Record<string, string | number>) =>
     Object.entries(values).map(
@@ -268,13 +288,36 @@ function ProposalCard({
       break;
     case "case":
       heading = "Proposta de caso";
-      title = proposal.demandTitle;
+      title = proposal.name;
       details = [
         ["Cliente", proposal.client],
-        ["Origem", "demanda aprovada e transformada em caso"],
+        [
+          "Origem",
+          proposal.fromDemand
+            ? "demanda aprovada e transformada em caso"
+            : "caso novo, sem demanda",
+        ],
+        ["Serviço", proposal.service],
+        ["Responsável", proposal.responsible],
+        ["Prazo", proposal.dueDate ? formatDate(proposal.dueDate) : ""],
+        [
+          "Honorários previstos",
+          proposal.budget ? formatCurrency(proposal.budget) : "",
+        ],
         ...customDetails(proposal.customValues),
       ];
-      confirmLabel = "Aprovar e criar caso";
+      confirmLabel = proposal.fromDemand ? "Aprovar e criar caso" : "Criar caso";
+      break;
+    case "task":
+      heading = "Proposta de tarefa";
+      title = proposal.title;
+      details = [
+        ["Caso", proposal.caseName],
+        ["Responsável", proposal.responsible],
+        ["Prazo", proposal.dueDate ? formatDate(proposal.dueDate) : ""],
+        ["Descrição", proposal.description],
+      ];
+      confirmLabel = "Criar tarefa";
       break;
     case "financial":
       heading =
@@ -303,7 +346,17 @@ function ProposalCard({
       confirmLabel = "Confirmar lançamento";
       break;
   }
-  const missing = proposal.kind === "client" ? [] : proposal.missing;
+  const missing =
+    proposal.kind === "client" || proposal.kind === "task"
+      ? []
+      : proposal.missing;
+  const screen: Record<Proposal["kind"], [string, string]> = {
+    client: ["/clientes", "Abrir Clientes"],
+    demand: ["/demandas", "Abrir Demandas"],
+    case: ["/projetos", "Abrir Casos"],
+    task: ["/projetos", "Abrir Casos"],
+    financial: ["/financeiro", "Abrir Financeiro"],
+  };
   const confirmed = proposal.status === "confirmada";
 
   return (
@@ -342,10 +395,19 @@ function ProposalCard({
       )}
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {confirmed ? (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
-            <Check className="h-3.5 w-3.5" />
-            Salvo no escritório
-          </span>
+          <>
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+              <Check className="h-3.5 w-3.5" />
+              Salvo no escritório
+            </span>
+            <button
+              type="button"
+              onClick={() => onOpen(screen[proposal.kind][0])}
+              className="text-xs text-muted-foreground underline hover:text-foreground"
+            >
+              {screen[proposal.kind][1]} para ver e editar
+            </button>
+          </>
         ) : (
           <>
             <button
@@ -551,14 +613,46 @@ export default function DomusAIPage() {
       return;
     }
 
+    const findCase = (projectId: string, caseName: string) =>
+      workspaceRef.current.projects.find((x) => x.id === projectId) ??
+      workspaceRef.current.projects.find(
+        (x) => caseName && same(x.name, caseName),
+      );
+
     if (p.kind === "case") {
+      if (!p.fromDemand) {
+        const existing = office.clients.find((c) => same(c.name, p.client));
+        await send({
+          type: "CREATE_PROJECT",
+          payload: {
+            id: `P-${crypto.randomUUID()}`,
+            name: p.name,
+            client: existing?.name ?? p.client,
+            ...(existing ? { clientId: existing.id } : {}),
+            ...(p.service ? { service: p.service } : {}),
+            responsible: p.responsible,
+            phase: office.configuration?.stages[0]?.id ?? "",
+            progress: 0,
+            dueDate: p.dueDate,
+            budget: p.budget,
+            plannedCost: 0,
+            realizedCost: 0,
+            health: "saudavel",
+            description: p.description,
+            tasks: [],
+            phases: [],
+            history: [],
+            customValues: p.customValues,
+          },
+        });
+        return;
+      }
       const demand =
         office.demands.find((d) => d.id === p.demandId) ??
         office.demands.find(
-          (d) => same(d.title, p.demandTitle) && same(d.client, p.client),
+          (d) => same(d.title, p.name) && same(d.client, p.client),
         );
-      if (!demand)
-        throw new Error(`Confirme antes a demanda “${p.demandTitle}”.`);
+      if (!demand) throw new Error(`Confirme antes a demanda “${p.name}”.`);
       if (demand.projectId) throw new Error("Esta demanda já virou caso.");
       // Confirmar o cartão é a aprovação do gestor; a conversão exige demanda aprovada.
       if (demand.status !== "aprovada")
@@ -573,11 +667,33 @@ export default function DomusAIPage() {
       return;
     }
 
-    const project = p.projectId
-      ? office.projects.find((x) => x.id === p.projectId)
-      : p.caseName
-        ? office.projects.find((x) => same(x.name, p.caseName))
-        : undefined;
+    if (p.kind === "task") {
+      const target = findCase(p.projectId, p.caseName);
+      if (!target) throw new Error(`Confirme antes o caso “${p.caseName}”.`);
+      await send({
+        type: "UPDATE_PROJECT",
+        payload: {
+          id: target.id,
+          updates: {
+            tasks: [
+              ...target.tasks,
+              {
+                id: crypto.randomUUID(),
+                title: p.title,
+                description: p.description,
+                responsible: p.responsible,
+                dueDate: p.dueDate,
+                done: false,
+              },
+            ],
+          },
+        },
+      });
+      return;
+    }
+
+    const project =
+      p.projectId || p.caseName ? findCase(p.projectId, p.caseName) : undefined;
     if ((p.projectId || p.caseName) && !project)
       throw new Error(`Confirme antes o caso “${p.caseName}”.`);
     await send({
@@ -749,7 +865,9 @@ export default function DomusAIPage() {
           const ready = proposals.filter(
             (p) =>
               p.status !== "confirmada" &&
-              (p.kind === "client" || p.missing.length === 0),
+              (p.kind === "client" ||
+                p.kind === "task" ||
+                p.missing.length === 0),
           );
           return (
             <div key={msg.id} className="space-y-3">
@@ -764,6 +882,7 @@ export default function DomusAIPage() {
                       disabled={saving}
                       onConfirm={() => void confirmProposals(msg.id, [p])}
                       onDiscard={() => patchProposal(msg.id, p.key, null)}
+                      onOpen={navigate}
                     />
                   ))}
                   {ready.length > 1 && (
@@ -822,7 +941,7 @@ export default function DomusAIPage() {
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Pergunte ou peça um cadastro: cliente, demanda, caso, lançamento…"
+              placeholder="Pergunte ou peça um cadastro: cliente, demanda, caso, tarefa, lançamento…"
               className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
               disabled={typing || historyLoading}
               aria-label="Pergunta à Domus AI"
