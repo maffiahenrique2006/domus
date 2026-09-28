@@ -92692,8 +92692,10 @@ async function askDomusAiWithProposals(message, context, history2, rules, schema
 }
 
 // artifacts/api-server/src/lib/chat-proposals.ts
-var MAX_PROPOSALS = 8;
+var MAX_PROPOSALS = 10;
 var PRIORITIES = ["urgente", "alta", "media", "baixa"];
+var KINDS = ["client", "demand", "case", "financial"];
+var FINANCIAL_TYPES = ["receber", "pagar"];
 var string4 = { type: "string" };
 var object2 = (properties) => ({
   type: "object",
@@ -92706,7 +92708,7 @@ var chatReplyJsonSchema = object2({
   proposals: {
     type: "array",
     items: object2({
-      kind: { type: "string", enum: ["client", "demand"] },
+      kind: { type: "string", enum: [...KINDS] },
       clientName: string4,
       email: string4,
       title: string4,
@@ -92714,105 +92716,176 @@ var chatReplyJsonSchema = object2({
       responsible: string4,
       priority: { type: "string", enum: [...PRIORITIES] },
       dueDate: string4,
-      estimatedValue: { type: "number" },
+      amount: { type: "number" },
       description: string4,
       customValues: {
         type: "array",
         items: object2({ fieldId: string4, value: string4 })
-      }
+      },
+      demandId: string4,
+      projectId: string4,
+      financialType: { type: "string", enum: [...FINANCIAL_TYPES] },
+      settled: { type: "boolean" },
+      category: string4
     })
   }
 });
 var rawProposal = external_exports.object({
-  kind: external_exports.enum(["client", "demand"]),
-  clientName: external_exports.string(),
-  email: external_exports.string(),
-  title: external_exports.string(),
-  service: external_exports.string(),
-  responsible: external_exports.string(),
+  kind: external_exports.enum(KINDS),
+  clientName: external_exports.string().catch(""),
+  email: external_exports.string().catch(""),
+  title: external_exports.string().catch(""),
+  service: external_exports.string().catch(""),
+  responsible: external_exports.string().catch(""),
   priority: external_exports.enum(PRIORITIES).catch("media"),
-  dueDate: external_exports.string(),
-  estimatedValue: external_exports.number().catch(0),
-  description: external_exports.string(),
-  customValues: external_exports.array(external_exports.object({ fieldId: external_exports.string(), value: external_exports.string() })).catch([])
+  dueDate: external_exports.string().catch(""),
+  amount: external_exports.number().catch(0),
+  description: external_exports.string().catch(""),
+  customValues: external_exports.array(external_exports.object({ fieldId: external_exports.string(), value: external_exports.string() })).catch([]),
+  demandId: external_exports.string().catch(""),
+  projectId: external_exports.string().catch(""),
+  financialType: external_exports.enum(FINANCIAL_TYPES).catch("receber"),
+  settled: external_exports.boolean().catch(false),
+  category: external_exports.string().catch("")
 });
 var rawReply = external_exports.object({
   reply: external_exports.string().trim().min(1).max(4e3),
-  proposals: external_exports.array(rawProposal).catch([])
+  proposals: external_exports.array(external_exports.unknown()).catch([])
 });
 var clean = (value, max) => value.trim().slice(0, max);
-var sameName = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
+var same = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
 var isDate = (value) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const d = /* @__PURE__ */ new Date(`${value}T12:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
 };
-function parseChatReply(text3, config3, existingClients) {
+var money2 = (value) => {
+  const rounded = Math.round(Math.max(0, Math.min(value, 999999999)) * 100) / 100;
+  return Number.isFinite(rounded) ? rounded : 0;
+};
+function customValuesFor(raw, config3, entity) {
+  const fields = config3.fields.filter((f3) => f3.entity === entity);
+  const values = {};
+  for (const { fieldId, value } of raw) {
+    const field = fields.find((f3) => f3.id === fieldId);
+    const trimmed = value.trim();
+    if (!field || !trimmed) continue;
+    if (field.type === "number") {
+      const n = Number(trimmed.replace(",", "."));
+      if (Number.isFinite(n)) values[field.id] = n;
+    } else if (field.type === "select") {
+      const option = field.options.find((o) => same(o, trimmed));
+      if (option) values[field.id] = option;
+    } else {
+      values[field.id] = trimmed.slice(0, 2e3);
+    }
+  }
+  const missing = fields.filter((f3) => f3.required && values[f3.id] === void 0).map((f3) => f3.label);
+  return { values, missing };
+}
+function parseChatReply(text3, config3, office) {
   const parsed = rawReply.parse(JSON.parse(text3));
   if (!config3) return { reply: parsed.reply, proposals: [] };
-  const proposals = [];
-  const proposedClients = [];
-  const demandFields = config3.fields.filter((f3) => f3.entity === "demand");
-  for (const raw of parsed.proposals) {
-    if (proposals.length >= MAX_PROPOSALS) break;
-    const clientName = clean(raw.clientName, 200);
-    if (!clientName) continue;
-    if (raw.kind === "client") {
-      const duplicate = existingClients.some((c) => sameName(c.name, clientName)) || proposedClients.some((name) => sameName(name, clientName));
-      if (duplicate) continue;
-      const email3 = clean(raw.email, 250);
-      proposedClients.push(clientName);
-      proposals.push({
-        kind: "client",
-        name: clientName,
-        email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email3) ? email3 : ""
-      });
-      continue;
-    }
+  const raws = parsed.proposals.flatMap((item) => {
+    const r2 = rawProposal.safeParse(item);
+    return r2.success ? [r2.data] : [];
+  });
+  const clients = [];
+  const demands = [];
+  const cases = [];
+  const financial = [];
+  for (const raw of raws.filter((r2) => r2.kind === "client")) {
+    const name = clean(raw.clientName, 200);
+    if (!name) continue;
+    if (office.clients.some((c) => same(c.name, name)) || clients.some((c) => same(c.name, name))) continue;
+    const email3 = clean(raw.email, 250);
+    clients.push({ kind: "client", name, email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email3) ? email3 : "" });
+  }
+  for (const raw of raws.filter((r2) => r2.kind === "demand")) {
     const title = clean(raw.title, 200);
-    if (!title) continue;
-    const customValues2 = {};
-    for (const { fieldId, value: value2 } of raw.customValues) {
-      const field = demandFields.find((f3) => f3.id === fieldId);
-      const trimmed = value2.trim();
-      if (!field || !trimmed) continue;
-      if (field.type === "number") {
-        const n = Number(trimmed.replace(",", "."));
-        if (Number.isFinite(n)) customValues2[field.id] = n;
-      } else if (field.type === "select") {
-        const option = field.options.find((o) => sameName(o, trimmed));
-        if (option) customValues2[field.id] = option;
-      } else {
-        customValues2[field.id] = trimmed.slice(0, 2e3);
-      }
-    }
-    const service = config3.services.find((s2) => sameName(s2, raw.service)) ?? "";
-    const value = Math.round(Math.max(0, Math.min(raw.estimatedValue, 999999999)) * 100) / 100;
-    proposals.push({
+    const client = clean(raw.clientName, 200);
+    if (!title || !client) continue;
+    const { values, missing } = customValuesFor(raw.customValues, config3, "demand");
+    demands.push({
       kind: "demand",
       title,
-      client: clientName,
-      service,
+      client,
+      service: config3.services.find((s2) => same(s2, raw.service)) ?? "",
       responsible: clean(raw.responsible, 200),
       priority: raw.priority,
       dueDate: isDate(raw.dueDate) ? raw.dueDate : "",
-      estimatedValue: Number.isFinite(value) ? value : 0,
+      estimatedValue: money2(raw.amount),
       description: clean(raw.description, 8e3),
-      customValues: customValues2,
-      missing: demandFields.filter((f3) => f3.required && customValues2[f3.id] === void 0).map((f3) => f3.label)
+      customValues: values,
+      missing
     });
   }
+  for (const raw of raws.filter((r2) => r2.kind === "case")) {
+    const byId = office.demands.find((d) => d.id === raw.demandId);
+    const title = clean(raw.title, 200);
+    const existing2 = byId ?? office.demands.find((d) => title && same(d.title, title));
+    const proposed = existing2 ? void 0 : demands.find((d) => title && same(d.title, title));
+    if (!existing2 && !proposed) continue;
+    if (existing2 && (existing2.projectId || ["convertida", "cancelada"].includes(existing2.status))) continue;
+    const demandTitle = existing2?.title ?? proposed.title;
+    if (cases.some((c) => same(c.demandTitle, demandTitle))) continue;
+    const { values, missing } = customValuesFor(raw.customValues, config3, "project");
+    cases.push({
+      kind: "case",
+      demandId: existing2?.id ?? "",
+      demandTitle,
+      client: existing2?.client ?? proposed.client,
+      customValues: values,
+      missing
+    });
+  }
+  for (const raw of raws.filter((r2) => r2.kind === "financial")) {
+    const description = clean(raw.title, 200);
+    if (!description) continue;
+    const amount = money2(raw.amount);
+    const dueDate = isDate(raw.dueDate) ? raw.dueDate : "";
+    const clientOrSupplier = clean(raw.clientName, 200);
+    const project = office.projects.find((p) => p.id === raw.projectId);
+    const wanted = clean(raw.description, 200);
+    const byName = project ?? office.projects.find((p) => wanted && same(p.name, wanted));
+    const pendingCase = byName ? void 0 : cases.find((c) => wanted && same(c.demandTitle, wanted));
+    const missing = [
+      ...amount > 0 ? [] : ["Valor"],
+      ...dueDate ? [] : ["Vencimento"],
+      ...clientOrSupplier ? [] : ["Cliente ou fornecedor"]
+    ];
+    financial.push({
+      kind: "financial",
+      type: raw.financialType,
+      description,
+      clientOrSupplier,
+      amount,
+      dueDate,
+      settled: raw.settled,
+      category: clean(raw.category, 200) || (raw.financialType === "receber" ? "Honor\xE1rios" : "Despesa"),
+      projectId: byName?.id ?? "",
+      caseName: byName?.name ?? pendingCase?.demandTitle ?? "",
+      missing
+    });
+  }
+  const proposals = [...clients, ...demands, ...cases, ...financial].slice(0, MAX_PROPOSALS);
   return { reply: parsed.reply, proposals };
 }
 var PROPOSAL_RULES = `
 Responda SEMPRE no formato JSON pedido. "reply" \xE9 o texto para o gestor, em at\xE9 6 frases.
-Se o gestor pedir para cadastrar, registrar, criar ou adicionar clientes ou demandas, devolva cada registro em "proposals". Voc\xEA N\xC3O grava nada: diga no reply que s\xE3o propostas e que o gestor precisa confirmar cada uma. Nunca diga que salvou, cadastrou ou criou.
+
+VOC\xCA PREPARA QUATRO TIPOS DE PROPOSTA, e s\xF3 estes: cadastrar cliente, cadastrar demanda, transformar uma demanda em caso, e registrar um lan\xE7amento financeiro. Voc\xEA N\xC3O grava nada: o gestor confirma cada proposta na tela. No reply, diga que s\xE3o propostas aguardando confirma\xE7\xE3o. Nunca diga que salvou, cadastrou, criou, lan\xE7ou ou converteu.
 Se n\xE3o houver pedido de cadastro, "proposals" \xE9 uma lista vazia.
-Use somente o que o gestor escreveu. Campo n\xE3o informado fica vazio: texto "", valor 0, data "". N\xE3o invente e-mail, prazo, valor, respons\xE1vel nem cliente.
-kind "client": preencha clientName e, se informado, email. Os outros campos ficam vazios. N\xE3o proponha cliente que j\xE1 est\xE1 em context.clients.
-kind "demand": clientName \xE9 o cliente da demanda; title \xE9 o nome curto do pedido; service deve ser exatamente um dos context.configuration.services ou ""; responsible \xE9 quem executa; priority \xE9 urgente, alta, media ou baixa (use media se n\xE3o informado); dueDate no formato AAAA-MM-DD ou "".
-customValues s\xF3 aceita fieldId listado em context.configuration.demandFields; em campo do tipo select use exatamente uma das options.
-No m\xE1ximo 8 propostas por resposta. Se o pedido tiver mais, proponha as 8 primeiras e avise no reply.`;
+Use somente o que o gestor escreveu ou o que est\xE1 em context. Campo n\xE3o informado fica vazio: texto "", n\xFAmero 0, data "", settled false. N\xE3o invente e-mail, prazo, valor, respons\xE1vel nem cliente.
+Nunca pe\xE7a informa\xE7\xE3o que o sistema n\xE3o guarda (forma de pagamento, data de emiss\xE3o, respons\xE1vel financeiro, n\xFAmero de processo). Se faltar algo obrigat\xF3rio, monte a proposta com o que h\xE1: a tela avisa o gestor do que falta.
+Para pedidos fora dos quatro tipos (criar caso sem demanda, editar ou excluir registros, criar tarefas, mudar configura\xE7\xE3o), diga em uma frase que isso n\xE3o \xE9 feito pelo chat e indique a tela: Casos, Demandas, Clientes, Financeiro ou Configura\xE7\xE3o do escrit\xF3rio. N\xE3o prometa preparar algo que n\xE3o est\xE1 nos quatro tipos.
+
+kind "client": preencha clientName e, se informado, email. N\xE3o proponha cliente que j\xE1 est\xE1 em context.clients.
+kind "demand": clientName \xE9 o cliente; title \xE9 o nome curto do pedido; service deve ser exatamente um dos context.configuration.services ou ""; responsible \xE9 quem executa; priority \xE9 urgente, alta, media ou baixa (use media se n\xE3o informado); dueDate AAAA-MM-DD ou ""; amount s\xE3o os honor\xE1rios estimados. customValues s\xF3 aceita fieldId de context.configuration.demandFields.
+kind "case": transforma UMA demanda em caso. Se a demanda j\xE1 existe em context.demands, preencha demandId com o id dela e title com o t\xEDtulo dela. Se a demanda est\xE1 sendo proposta nesta mesma resposta, deixe demandId "" e repita em title exatamente o title da demanda proposta. customValues s\xF3 aceita fieldId de context.configuration.caseFields. Confirmar esta proposta aprova a demanda.
+kind "financial": title \xE9 a descri\xE7\xE3o do lan\xE7amento; financialType \xE9 receber ou pagar; clientName \xE9 o cliente ou fornecedor; amount \xE9 o valor, maior que zero; dueDate \xE9 o vencimento AAAA-MM-DD (calcule a partir de context.today quando o gestor disser "em 30 dias" ou "dia 10"); settled true somente se o gestor disser que j\xE1 foi recebido ou pago; category \xE9 curta, como Mensalidade, \xCAxito, Honor\xE1rios ou Despesa. Para vincular a um caso: se o caso existe em context.projects, preencha projectId com o id; se o caso ser\xE1 criado nesta mesma resposta, deixe projectId "" e escreva em description exatamente o title da demanda que vira caso. Sem v\xEDnculo, deixe os dois vazios.
+Honor\xE1rios estimados de uma demanda n\xE3o s\xE3o lan\xE7amento financeiro: s\xF3 proponha kind "financial" quando o gestor pedir um lan\xE7amento, conta a receber, conta a pagar, cobran\xE7a ou pagamento.
+Em campo do tipo select use exatamente uma das options. No m\xE1ximo 10 propostas por resposta; se o pedido tiver mais, proponha as 10 primeiras e avise no reply.`;
 
 // artifacts/api-server/src/middlewares/rate-limit.ts
 function rateLimit(options) {
@@ -92856,17 +92929,17 @@ router3.post("/chat/messages", rateLimit({ windowMs: 6e4, max: 12 }), async (req
     today: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10),
     company: workspace.company,
     totals: { demands: workspace.demands.length, projects: workspace.projects.length, financialEntries: workspace.financialEntries.length, receivable: total("receber"), received: total("receber", "recebido"), payable: total("pagar"), paid: total("pagar", "pago") },
-    demands: workspace.demands.slice(0, 20).map((d) => ({ id: d.id, title: d.title, status: d.status, priority: d.priority, dueDate: d.dueDate, responsible: d.responsible })),
-    projects: workspace.projects.slice(0, 20).map((p) => ({ id: p.id, name: p.name, phase: p.phase, progress: p.progress, dueDate: p.dueDate, health: p.health, taskCount: p.tasks.length, tasks: p.tasks.filter((t2) => !t2.done).slice(0, 5).map((t2) => ({ id: t2.id, title: t2.title.slice(0, 100), dueDate: t2.dueDate })) })),
+    demands: workspace.demands.slice(0, 20).map((d) => ({ id: d.id, title: d.title, client: d.client, status: d.status, priority: d.priority, dueDate: d.dueDate, responsible: d.responsible, estimatedValue: d.estimatedValue, projectId: d.projectId })),
+    projects: workspace.projects.slice(0, 20).map((p) => ({ id: p.id, name: p.name, client: p.client, phase: p.phase, progress: p.progress, dueDate: p.dueDate, health: p.health, taskCount: p.tasks.length, tasks: p.tasks.filter((t2) => !t2.done).slice(0, 5).map((t2) => ({ id: t2.id, title: t2.title.slice(0, 100), dueDate: t2.dueDate })) })),
     financialEntries: workspace.financialEntries.slice(0, 20).map((f3) => ({ id: f3.id, projectId: f3.projectId, type: f3.type, amount: f3.amount, status: f3.status, dueDate: f3.dueDate })),
     clients: workspace.clients.slice(0, 50).map((c) => c.name),
-    configuration: workspace.configuration ? { services: workspace.configuration.services, demandFields: workspace.configuration.fields.filter((f3) => f3.entity === "demand").map((f3) => ({ fieldId: f3.id, label: f3.label, type: f3.type, required: f3.required, options: f3.options })) } : null,
+    configuration: workspace.configuration ? { services: workspace.configuration.services, demandFields: workspace.configuration.fields.filter((f3) => f3.entity === "demand").map((f3) => ({ fieldId: f3.id, label: f3.label, type: f3.type, required: f3.required, options: f3.options })), caseFields: workspace.configuration.fields.filter((f3) => f3.entity === "project").map((f3) => ({ fieldId: f3.id, label: f3.label, type: f3.type, required: f3.required, options: f3.options })) } : null,
     scope: "Totais cobrem todos os registros; detalhes limitados aos primeiros 20 por m\xF3dulo e at\xE9 5 tarefas pendentes por caso. Se faltarem detalhes, informe a limita\xE7\xE3o. Sem consulta jur\xEDdica externa."
   };
   const ai = await askDomusAiWithProposals(content, context, previous.rows.reverse().map((m2) => ({ ...m2, content: m2.content.slice(0, 1e3) })), PROPOSAL_RULES, chatReplyJsonSchema, (usage) => recordUsage(companyId, userId, "chat", usage));
   let parsed;
   try {
-    parsed = parseChatReply(ai.text, workspace.configuration, workspace.clients);
+    parsed = parseChatReply(ai.text, workspace.configuration, { clients: workspace.clients, demands: workspace.demands, projects: workspace.projects });
   } catch {
     throw new AiUnavailableError(new Error("Invalid chat reply"));
   }
