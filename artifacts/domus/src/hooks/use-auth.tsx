@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { identify, resetIdentity } from "@/lib/analytics"
 
 export interface AuthUser {
   id: number
@@ -24,7 +25,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function refresh() {
     try {
       const res = await fetch("/api/auth/me", { credentials: "include" })
-      setUser(res.ok ? await res.json() : null)
+      const next: AuthUser | null = res.ok ? await res.json() : null
+      if (next) identify(next)
+      setUser(next)
     } catch {
       setUser(null)
     } finally {
@@ -35,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function logout() {
     const response = await fetch("/api/auth/logout", { method: "POST", credentials: "include" })
     if (!response.ok) throw new Error("Não foi possível encerrar a sessão. Tente novamente.")
+    resetIdentity()
     setUser(null)
   }
 

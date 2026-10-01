@@ -12,6 +12,8 @@ Os dados operacionais são persistidos em PostgreSQL e separados por escritório
 
 Casos aparecem em quadro por etapa (arrastar ou usar as setas) ou em lista, com busca e filtro por responsável. Abrir um caso mostra tarefas com descrição, financeiro do caso e dados editáveis.
 
+Analytics de produto com PostHog: páginas vistas e eventos do funil (entrevista, pedidos à IA, cadastros confirmados, etapa de caso, checkout). A pessoa é identificada só pelo id interno e pelo plano; nada do que é digitado é enviado. Liga com `VITE_POSTHOG_KEY` na Vercel.
+
 ## Stack e dados
 
 - Interface: React, TypeScript, Vite, Tailwind, Wouter e design system existente.

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { track } from "@/lib/analytics"
 import { useSearch, useLocation } from "wouter"
 import { Sparkles, Check } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
@@ -29,6 +30,7 @@ export default function AccountPage() {
         setBilling(status)
         if (checkout === "success" && status.active) {
           setConfirmation("Assinatura de teste confirmada pelo servidor. Plano Pro ativo.")
+          track("plan_upgraded", { plan: "pro", mode: "stripe_test" })
           await refresh()
           navigate("/conta", { replace: true })
         } else if (checkout === "success") {
@@ -74,6 +76,7 @@ export default function AccountPage() {
         })
         return
       }
+      track("checkout_started", { plan: "pro" })
       window.location.href = body.url
     } catch {
       toast({

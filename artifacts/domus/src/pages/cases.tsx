@@ -13,6 +13,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useWorkspace } from "@/data/store";
+import { track } from "@/lib/analytics";
 import type {
   Project,
   ProjectTask,
@@ -230,6 +231,7 @@ function Tasks({ project }: { project: Project }) {
                     type: "TOGGLE_PROJECT_TASK",
                     payload: { projectId: project.id, taskId: t.id },
                   });
+                  if (!t.done) track("task_completed");
                   setError("");
                 } catch (e) {
                   setError(message(e));
@@ -1113,6 +1115,9 @@ export function Cases() {
       await dispatch({
         type: "UPDATE_PROJECT",
         payload: { id: project.id, updates: { phase: stageId } },
+      });
+      track("case_stage_changed", {
+        stage_index: stages.findIndex((s) => s.id === stageId),
       });
       setError("");
     } catch (e) {

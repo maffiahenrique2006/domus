@@ -80,6 +80,8 @@ allowBuilds:
   '@swc/core': true
   msw: true
   unrs-resolver: true
+  # core-js só imprime um aviso no postinstall; não precisa rodar.
+  core-js: false
 
 overrides:
   # Keep macOS binaries for local development and Linux x64 for deployment.
