@@ -3,7 +3,7 @@
 //
 // Privacidade: identificamos a pessoa só pelo id interno e pelo plano. Não enviamos
 // e-mail, nome, nem conteúdo digitado (briefing, perguntas, nomes de clientes).
-// A gravação de sessão mascara todos os campos de texto.
+// A gravação de sessão e os cliques automáticos mascaram todo texto da tela.
 import posthog from "posthog-js";
 
 const key = import.meta.env.VITE_POSTHOG_KEY as string | undefined;
@@ -21,9 +21,12 @@ export function startAnalytics() {
     capture_pageview: "history_change",
     capture_pageleave: true,
     autocapture: true,
+    // Cliques e gravações nunca levam texto da tela (nomes de clientes, valores).
+    mask_all_text: true,
+    mask_all_element_attributes: true,
     session_recording: {
       maskAllInputs: true,
-      maskTextSelector: "[data-ph-mask]",
+      maskTextSelector: "*",
     },
   });
   started = true;
